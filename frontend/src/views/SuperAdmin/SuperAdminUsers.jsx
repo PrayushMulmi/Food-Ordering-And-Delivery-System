@@ -1,4 +1,3 @@
-// VERSION 2
 import { useState } from "react";
 import { Search, Eye, MoreVertical, Mail, Phone } from "lucide-react";
 import { Input } from "../../shared/ui";
