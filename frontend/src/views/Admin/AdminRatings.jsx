@@ -1,3 +1,4 @@
+// v2 update
 import { useState } from "react";
 import { Star, ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react";
 import { Badge } from "../../shared/ui";
