@@ -1,3 +1,4 @@
+// v2 update
 import { Star } from "lucide-react";
 import { Badge } from "../../shared/ui";
 
