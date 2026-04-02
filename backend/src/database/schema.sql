@@ -182,33 +182,3 @@ VALUES (
   'active'
 )
 ON DUPLICATE KEY UPDATE email = email;
-
-INSERT INTO users (full_name, email, password, phone, role, status)
-SELECT 'Rudra Cafe Admin', 'restaurantadmin@example.com', '$2a$10$KIXIDT1V3x9P5M1Y7qK5Lu5gD6Gx8yPyBvR5s5xyPjdvVSxGInxBq', '9800000001', 'restaurant_admin', 'active'
-WHERE NOT EXISTS (
-  SELECT 1 FROM users WHERE email = 'restaurantadmin@example.com'
-);
-
-INSERT INTO restaurants (owner_user_id, name, description, cuisine, address, contact_phone, image_url, price_level, rating_average, is_open, status)
-SELECT u.id, 'Rudra Cafe', 'Fresh burgers, momo, coffee, and quick meals.', 'Cafe, Fast Food', 'Putalisadak, Kathmandu', '9800000001', 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1200&q=80', '$$', 4.60, 1, 'active'
-FROM users u
-WHERE u.email = 'restaurantadmin@example.com'
-  AND NOT EXISTS (SELECT 1 FROM restaurants WHERE name = 'Rudra Cafe');
-
-INSERT INTO menu_items (restaurant_id, category, name, description, price, image_url, is_available)
-SELECT r.id, 'Burger', 'Annaya Special Burger', 'Grilled patty burger with cheese and fresh vegetables.', 443.00, 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1200&q=80', 1
-FROM restaurants r
-WHERE r.name = 'Rudra Cafe'
-  AND NOT EXISTS (SELECT 1 FROM menu_items WHERE name = 'Annaya Special Burger');
-
-INSERT INTO menu_items (restaurant_id, category, name, description, price, image_url, is_available)
-SELECT r.id, 'Momo', 'Chicken Momo', 'Steamed momo served with spicy achar.', 220.00, 'https://images.unsplash.com/photo-1625944525533-473f1c35fdcf?auto=format&fit=crop&w=1200&q=80', 1
-FROM restaurants r
-WHERE r.name = 'Rudra Cafe'
-  AND NOT EXISTS (SELECT 1 FROM menu_items WHERE name = 'Chicken Momo');
-
-INSERT INTO menu_items (restaurant_id, category, name, description, price, image_url, is_available)
-SELECT r.id, 'Beverage', 'Cold Coffee', 'Smooth chilled coffee with ice cream topping.', 180.00, 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1200&q=80', 1
-FROM restaurants r
-WHERE r.name = 'Rudra Cafe'
-  AND NOT EXISTS (SELECT 1 FROM menu_items WHERE name = 'Cold Coffee');
