@@ -1,3 +1,4 @@
+// v2 update
 import { useState } from "react";
 import { TrendingUp, TrendingDown, DollarSign, ShoppingBag, Users } from "lucide-react";
 
