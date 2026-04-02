@@ -1,4 +1,3 @@
-// VERSION 2
 import { TrendingUp, Store, Users, DollarSign, ShoppingBag } from "lucide-react";
 
 const statsData = [
