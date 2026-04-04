@@ -1,166 +1,81 @@
-// v4
-import { useState } from "react";
-import { Badge } from "../../shared/ui";
-import { Button } from "../../shared/ui";
-import { Input } from "../../shared/ui";
-import { Search, Eye } from "lucide-react";
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState } from "react";
+import { Badge, Input } from "../../shared/ui";
+import { Search } from "lucide-react";
+import { api } from "../../lib/api";
+import { toast } from "sonner";
 
-const mockOrders = [
-  {
-    id: "ORD-001",
-    customerName: "John Doe",
-    items: "2x Margherita Pizza, 1x Caesar Salad",
-    total: "$45.50",
-    status: "delivered",
-    date: "Mar 24, 2026 - 2:30 PM",
-    address: "123 Main St, Downtown",
-  },
-  {
-    id: "ORD-002",
-    customerName: "Sarah Smith",
-    items: "1x Chicken Burger, 1x Fries",
-    total: "$28.00",
-    status: "preparing",
-    date: "Mar 24, 2026 - 3:15 PM",
-    address: "456 Oak Ave, Westside",
-  },
-  {
-    id: "ORD-003",
-    customerName: "Mike Johnson",
-    items: "3x Pasta Carbonara, 2x Garlic Bread",
-    total: "$67.80",
-    status: "on-the-way",
-    date: "Mar 24, 2026 - 3:45 PM",
-    address: "789 Pine Rd, Eastside",
-  },
-  {
-    id: "ORD-004",
-    customerName: "Emily Brown",
-    items: "1x Sushi Platter, 1x Miso Soup",
-    total: "$52.00",
-    status: "pending",
-    date: "Mar 24, 2026 - 4:00 PM",
-    address: "321 Elm St, Northside",
-  },
-  {
-    id: "ORD-005",
-    customerName: "David Wilson",
-    items: "2x Chicken Tikka, 1x Naan Bread",
-    total: "$38.50",
-    status: "cancelled",
-    date: "Mar 24, 2026 - 1:20 PM",
-    address: "654 Maple Dr, Southside",
-  },
-];
-
-const statusConfig = {
-  delivered: { bg: "bg-[#22C55E]", text: "Delivered" },
-  preparing: { bg: "bg-[#F97316]", text: "Preparing" },
-  "on-the-way": { bg: "bg-[#FACC15] text-black", text: "On the Way" },
-  pending: { bg: "bg-gray-400", text: "Pending" },
-  cancelled: { bg: "bg-red-500", text: "Cancelled" },
-};
+const statusOptions = ["Pending", "Confirmed", "Preparing", "Ready for Dispatch", "Out for Delivery", "Delivered", "Cancelled", "Refunded"];
 
 export function AdminOrders() {
+  const [orders, setOrders] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  const filteredOrders = mockOrders.filter((order) => {
-    const matchesSearch =
-      order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = filterStatus === "all" || order.status === filterStatus;
+  const loadOrders = async () => {
+    try {
+      const res = await api.get('/api/restaurant-admin/orders');
+      setOrders(res.data || []);
+    } catch (error) {
+      toast.error(error.message || 'Could not load orders');
+    }
+  };
+
+  useEffect(() => { loadOrders(); }, []);
+
+  const filteredOrders = useMemo(() => orders.filter((order) => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = order.order_code?.toLowerCase().includes(q) || order.customer_name?.toLowerCase().includes(q);
+    const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
     return matchesSearch && matchesStatus;
-  });
+  }), [orders, searchQuery, filterStatus]);
+
+  const handleStatusChange = async (id, status) => {
+    try {
+      await api.put(`/api/restaurant-admin/orders/${id}/status`, { status });
+      toast.success('Order status updated');
+      loadOrders();
+    } catch (error) {
+      toast.error(error.message || 'Failed to update status');
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-4xl font-bold mb-8">Orders Management</h1>
-
-      {/* Search and Filter */}
       <div className="bg-white border-2 border-gray-200 rounded-lg p-6 mb-8">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
-            <Input
-              placeholder="Search by order ID or customer name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pr-10"
-            />
+            <Input placeholder="Search by order code or customer name..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pr-10" />
             <Search className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
           </div>
-
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-[#22C55E] focus:outline-none"
-          >
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-4 py-2 border-2 border-gray-200 rounded-lg">
             <option value="all">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="preparing">Preparing</option>
-            <option value="on-the-way">On the Way</option>
-            <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
+            {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
           </select>
         </div>
       </div>
 
-      {/* Orders Table */}
-      <div className="bg-white border-2 border-gray-200 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-[#22C55E] text-white">
-              <tr>
-                <th className="px-6 py-4 text-left font-semibold">Order ID</th>
-                <th className="px-6 py-4 text-left font-semibold">Customer</th>
-                <th className="px-6 py-4 text-left font-semibold">Items</th>
-                <th className="px-6 py-4 text-left font-semibold">Total</th>
-                <th className="px-6 py-4 text-left font-semibold">Status</th>
-                <th className="px-6 py-4 text-left font-semibold">Date</th>
-                <th className="px-6 py-4 text-left font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 font-semibold">{order.id}</td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="font-medium">{order.customerName}</p>
-                      <p className="text-sm text-gray-600">{order.address}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm">{order.items}</td>
-                  <td className="px-6 py-4 font-semibold text-[#22C55E]">{order.total}</td>
-                  <td className="px-6 py-4">
-                    <Badge
-                      className={`${
-                        statusConfig[order.status].bg
-                      } text-white`}
-                    >
-                      {statusConfig[order.status].text}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{order.date}</td>
-                  <td className="px-6 py-4">
-                    <Link to={`/order/${order.id}`}>
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredOrders.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            No orders found matching your criteria.
+      <div className="space-y-4">
+        {filteredOrders.map((order) => (
+          <div key={order.id} className="bg-white rounded-lg border p-6 shadow-sm">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold">{order.order_code}</h3>
+                <p className="text-gray-600">{order.customer_name}</p>
+                <p className="text-sm text-gray-500">{new Date(order.created_at).toLocaleString()}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge>{order.status}</Badge>
+                <span className="font-semibold">Rs. {Number(order.final_total || 0).toFixed(2)}</span>
+                <select value={order.status} onChange={(e) => handleStatusChange(order.id, e.target.value)} className="px-4 py-2 border rounded-lg">
+                  {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+                </select>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-gray-700">Delivery address: {order.delivery_address}</p>
           </div>
-        )}
+        ))}
+        {!filteredOrders.length && <div className="bg-white rounded-lg border p-8 text-center text-gray-600">No orders found.</div>}
       </div>
     </div>
   );
