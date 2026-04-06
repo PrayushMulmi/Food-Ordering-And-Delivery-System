@@ -16,12 +16,8 @@ export const ReviewModel = {
     );
 
     const eligible = eligibleRows[0];
-
     if (!eligible) {
-      throw new ApiError(
-        400,
-        "Review allowed only for delivered ordered items",
-      );
+      throw new ApiError(400, "Review allowed only for delivered ordered items");
     }
 
     const existing = await query(
@@ -32,10 +28,7 @@ export const ReviewModel = {
     );
 
     if (existing[0]) {
-      throw new ApiError(
-        400,
-        "Review already submitted for this item in this order",
-      );
+      throw new ApiError(400, "Review already submitted for this item in this order");
     }
 
     const result = await query(
@@ -52,24 +45,29 @@ export const ReviewModel = {
       ],
     );
 
+    await this.refreshRestaurantRating(eligible.restaurant_id);
+    return this.findById(result.insertId);
+  },
+
+  async refreshRestaurantRating(restaurantId) {
     await query(
       `UPDATE restaurants
        SET rating_average = (
          SELECT IFNULL(AVG(rating), 0) FROM reviews WHERE restaurant_id = ?
        )
        WHERE id = ?`,
-      [eligible.restaurant_id, eligible.restaurant_id],
+      [restaurantId, restaurantId],
     );
-
-    return this.findById(result.insertId);
   },
 
   async findById(id) {
     const rows = await query(
-      `SELECT r.*, u.full_name AS customer_name, m.name AS menu_item_name
+      `SELECT r.*, u.full_name AS customer_name, m.name AS menu_item_name, o.order_code, rs.name AS restaurant_name
        FROM reviews r
        INNER JOIN users u ON u.id = r.user_id
        INNER JOIN menu_items m ON m.id = r.menu_item_id
+       INNER JOIN orders o ON o.id = r.order_id
+       INNER JOIN restaurants rs ON rs.id = r.restaurant_id
        WHERE r.id = ?
        LIMIT 1`,
       [id],
@@ -79,24 +77,45 @@ export const ReviewModel = {
 
   async listByRestaurant(restaurantId) {
     return query(
-      `SELECT r.*, u.full_name AS customer_name, m.name AS menu_item_name
+      `SELECT r.*, u.full_name AS customer_name, m.name AS menu_item_name, o.order_code, rs.name AS restaurant_name
        FROM reviews r
        INNER JOIN users u ON u.id = r.user_id
        INNER JOIN menu_items m ON m.id = r.menu_item_id
+       INNER JOIN orders o ON o.id = r.order_id
+       INNER JOIN restaurants rs ON rs.id = r.restaurant_id
        WHERE r.restaurant_id = ?
        ORDER BY r.id DESC`,
       [restaurantId],
     );
   },
 
-  async listByMenuItem(menuItemId) {
+  async listByUser(userId) {
     return query(
-      `SELECT r.*, u.full_name AS customer_name
+      `SELECT r.*, m.name AS menu_item_name, rs.name AS restaurant_name, o.order_code
        FROM reviews r
-       INNER JOIN users u ON u.id = r.user_id
-       WHERE r.menu_item_id = ?
+       INNER JOIN menu_items m ON m.id = r.menu_item_id
+       INNER JOIN restaurants rs ON rs.id = r.restaurant_id
+       INNER JOIN orders o ON o.id = r.order_id
+       WHERE r.user_id = ?
        ORDER BY r.id DESC`,
-      [menuItemId],
+      [userId],
+    );
+  },
+
+  async listReviewableItemsByUser(userId) {
+    return query(
+      `SELECT o.id AS order_id, o.order_code, o.created_at, rs.name AS restaurant_name,
+              oi.menu_item_id, oi.item_name,
+              EXISTS(
+                SELECT 1 FROM reviews r
+                WHERE r.order_id = o.id AND r.user_id = o.user_id AND r.menu_item_id = oi.menu_item_id
+              ) AS already_reviewed
+       FROM orders o
+       INNER JOIN restaurants rs ON rs.id = o.restaurant_id
+       INNER JOIN order_items oi ON oi.order_id = o.id
+       WHERE o.user_id = ? AND o.status = 'Delivered'
+       ORDER BY o.id DESC, oi.id ASC`,
+      [userId],
     );
   },
 };
