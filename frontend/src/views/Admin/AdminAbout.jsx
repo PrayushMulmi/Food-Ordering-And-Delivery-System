@@ -1,4 +1,3 @@
-// 5
 import { useEffect, useState } from "react";
 import { Input, Button, Textarea } from "../../shared/ui";
 import { api } from "../../lib/api";
