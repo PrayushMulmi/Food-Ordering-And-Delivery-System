@@ -1,3 +1,4 @@
+// v6
 import { useEffect, useMemo, useState } from "react";
 import { Badge, Input } from "../../shared/ui";
 import { Search } from "lucide-react";
