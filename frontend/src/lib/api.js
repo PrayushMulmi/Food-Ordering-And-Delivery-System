@@ -1,32 +1,27 @@
-// v6
 import { clearSession, getToken, setSession } from './auth';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5050';
+export const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5050';
 
 async function request(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
-
+  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
   let data = null;
-  try {
-    data = await response.json();
-  } catch {
-    data = null;
-  }
+  try { data = await response.json(); } catch { data = null; }
 
   if (!response.ok) {
     if (response.status === 401) clearSession();
     throw new Error(data?.message || 'Request failed');
   }
-
   return data;
 }
+
+export const fileUrl = (path) => {
+  if (!path) return '';
+  return path.startsWith('http') ? path : `${API_BASE}${path}`;
+};
 
 export const api = {
   get: (path) => request(path),
