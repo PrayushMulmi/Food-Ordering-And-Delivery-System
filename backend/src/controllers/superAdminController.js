@@ -158,9 +158,22 @@ export const resetUserPasswordByAdmin = asyncHandler(async (req, res) => {
   sendResponse(
     res,
     200,
-    "Temporary password issued and email notification sent",
+    "Temporary password issued",
     {
       tempPassword,
     },
   );
+});
+
+
+export const getUserDetail = asyncHandler(async (req, res) => {
+  const user = await UserModel.findById(req.params.id);
+  if (!user) throw new ApiError(404, 'User not found');
+  sendResponse(res, 200, 'User detail fetched', user);
+});
+
+export const getRestaurantDetail = asyncHandler(async (req, res) => {
+  const restaurant = await RestaurantModel.findById(req.params.id);
+  if (!restaurant) throw new ApiError(404, 'Restaurant not found');
+  sendResponse(res, 200, 'Restaurant detail fetched', restaurant);
 });
