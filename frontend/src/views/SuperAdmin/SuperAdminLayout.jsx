@@ -1,32 +1,32 @@
-// v6
-import { Link, Outlet, useLocation } from 'react-router-dom';
-import { User } from "lucide-react";
-import { Button } from "../../shared/ui";
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
+import { Button } from '../../shared/ui';
+import { clearSession } from '../../lib/auth';
 
 export function SuperAdminLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const navLinks = [
-    { path: "/superadmin/dashboard", label: "Dashboard" },
-    { path: "/superadmin/restaurants", label: "Restaurants" },
-    { path: "/superadmin/users", label: "Users" },
+    { path: '/superadmin/dashboard', label: 'Dashboard' },
+    { path: '/superadmin/restaurants', label: 'Restaurants' },
+    { path: '/superadmin/users', label: 'Users' },
   ];
 
   const isActive = (path) => location.pathname === path;
 
+  const logout = () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      clearSession();
+      navigate('/superadmin');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
-      {/* Header Navigation */}
-      <header className="bg-gradient-to-r from-[#22C55E] to-[#16A34A] border-b sticky top-0 z-50 shadow-lg">
+      <header className="sticky top-0 z-50 border-b bg-[#dcfce7] shadow-sm">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-24">
-            <div className="flex items-center gap-4">
-              <div className="text-white">
-                <h1 className="text-2xl font-bold">Super Admin</h1>
-                <p className="text-sm opacity-90">Platform Management</p>
-              </div>
-            </div>
-
+          <div className="flex h-24 items-center justify-between gap-6">
             <nav className="flex items-center gap-8">
               {navLinks.map((link) => (
                 <Link
@@ -34,28 +34,21 @@ export function SuperAdminLayout() {
                   to={link.path}
                   className={`text-xl font-medium transition-colors ${
                     isActive(link.path)
-                      ? "text-white font-bold border-b-4 border-white pb-1"
-                      : "text-white/80 hover:text-white"
+                      ? 'font-semibold text-black'
+                      : 'text-[#5b5b5b] hover:text-black'
                   }`}
                 >
                   {link.label}
                 </Link>
               ))}
             </nav>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => window.location.href = '/superadmin/profile'}
-              className="hover:bg-white/20 text-white"
-            >
-              <User className="h-6 w-6" />
+            <Button variant="ghost" size="icon" onClick={logout} className="hover:bg-white/50">
+              <LogOut className="h-6 w-6" />
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main>
         <Outlet />
       </main>
