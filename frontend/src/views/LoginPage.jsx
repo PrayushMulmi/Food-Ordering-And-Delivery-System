@@ -1,3 +1,4 @@
+// v7
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Input } from '../shared/ui';
