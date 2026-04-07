@@ -38,7 +38,7 @@ export function AdminDashboard() {
       <div>
         <h1 className="text-4xl font-bold mb-2">{restaurant?.name || 'Restaurant Dashboard'}</h1>
         <p className="text-2xl text-gray-600 mb-4">{restaurant?.address || 'No address added yet'}</p>
-        <Badge className="bg-[#979494] text-white text-base px-4 py-2">{currentDate}</Badge>
+        <Badge className="bg-[#16A34A] text-white text-base px-4 py-2">{currentDate}</Badge>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -51,7 +51,7 @@ export function AdminDashboard() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-[#D9D9D9] rounded-lg p-6">
+        <div className="lg:col-span-2 bg-[#f0fdf4] rounded-lg p-6">
           <h2 className="text-3xl font-bold mb-6">Sales</h2>
           <div className="grid md:grid-cols-3 gap-4 text-center">
             <div className="bg-white rounded-lg p-6"><p className="text-lg text-gray-600">Delivered</p><p className="text-3xl font-bold">{dashboard?.summary?.delivered_orders ?? 0}</p></div>
@@ -62,7 +62,7 @@ export function AdminDashboard() {
 
         <div>
           <h2 className="text-3xl font-bold mb-6">Overall Review</h2>
-          <div className="bg-[#D9D9D9] rounded-lg p-6">
+          <div className="bg-[#f0fdf4] rounded-lg p-6">
             <p className="text-xl font-medium text-center mb-6">Recent Reviews</p>
             <div className="space-y-4 mb-8">
               {recentReviews.length ? recentReviews.map((review, index) => (
@@ -83,7 +83,7 @@ export function AdminDashboard() {
 
       <div>
         <h2 className="text-3xl font-bold mb-6">Bestsellers</h2>
-        <div className="bg-[#D9D9D9] rounded-lg p-6">
+        <div className="bg-[#f0fdf4] rounded-lg p-6">
           <ul className="space-y-4">
             {bestsellers.length ? bestsellers.map((item, index) => (
               <li key={index} className="bg-white rounded-lg px-5 py-4 flex items-center justify-between">
