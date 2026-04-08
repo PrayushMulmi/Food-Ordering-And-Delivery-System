@@ -1,1 +1,5 @@
-export const createOrder = async (payload) => ({ success: true, orderId: Date.now(), data: payload });
+import { api } from '../lib/api';
+
+export async function createOrder(payload) {
+  return api.placeOrder(payload);
+}
