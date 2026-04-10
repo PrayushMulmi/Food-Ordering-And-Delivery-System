@@ -1,12 +1,22 @@
 import express from "express";
+import { protect } from "../middleware/authMiddleware.js";
+import { allowRoles } from "../middleware/roleMiddleware.js";
+import { ROLES } from "../constants/roles.js";
 import {
-  listRestaurants,
-  getRestaurantById,
-} from "../controllers/restaurantController.js";
+  createMenuItem,
+  updateMenuItem,
+  deleteMenuItem,
+} from "../controllers/menuController.js";
 
 const router = express.Router();
 
-router.get("/", listRestaurants);
-router.get("/:id", getRestaurantById);
+router.post("/", protect, allowRoles(ROLES.RESTAURANT_ADMIN), createMenuItem);
+router.put("/:id", protect, allowRoles(ROLES.RESTAURANT_ADMIN), updateMenuItem);
+router.delete(
+  "/:id",
+  protect,
+  allowRoles(ROLES.RESTAURANT_ADMIN),
+  deleteMenuItem,
+);
 
 export default router;
