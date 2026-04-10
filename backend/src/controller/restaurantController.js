@@ -17,9 +17,10 @@ export const getRestaurantById = asyncHandler(async (req, res) => {
   const menu = await MenuModel.listByRestaurant(req.params.id);
   const reviews = await ReviewModel.listByRestaurant(req.params.id);
 
-  sendResponse(res, 200, "Restaurant details fetched", {
-    restaurant,
-    menu,
-    reviews,
-  });
+  sendResponse(res, 200, "Restaurant details fetched", { restaurant, menu, reviews });
+});
+
+export const getRestaurantFilters = asyncHandler(async (_req, res) => {
+  const filters = await RestaurantModel.listFilterOptions();
+  sendResponse(res, 200, "Restaurant filters fetched", filters);
 });
