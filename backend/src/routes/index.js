@@ -7,7 +7,6 @@ import orderRoutes from "./orderRoutes.js";
 import reviewRoutes from "./reviewRoutes.js";
 import restaurantAdminRoutes from "./restaurantAdminRoutes.js";
 import superAdminRoutes from "./superAdminRoutes.js";
-import notificationRoutes from "./notificationRoutes.js";
 
 const router = express.Router();
 
@@ -19,6 +18,5 @@ router.use("/orders", orderRoutes);
 router.use("/reviews", reviewRoutes);
 router.use("/restaurant-admin", restaurantAdminRoutes);
 router.use("/super-admin", superAdminRoutes);
-router.use("/notifications", notificationRoutes);
 
 export default router;
