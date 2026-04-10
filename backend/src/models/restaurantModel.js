@@ -1,4 +1,3 @@
-// v5
 import { query } from "../config/db.js";
 
 export const RestaurantModel = {
@@ -23,17 +22,12 @@ export const RestaurantModel = {
   },
 
   async findById(id) {
-    const rows = await query(`SELECT * FROM restaurants WHERE id = ? LIMIT 1`, [
-      id,
-    ]);
+    const rows = await query(`SELECT * FROM restaurants WHERE id = ? LIMIT 1`, [id]);
     return rows[0] || null;
   },
 
   async findByOwnerUserId(ownerUserId) {
-    const rows = await query(
-      `SELECT * FROM restaurants WHERE owner_user_id = ? LIMIT 1`,
-      [ownerUserId],
-    );
+    const rows = await query(`SELECT * FROM restaurants WHERE owner_user_id = ? LIMIT 1`, [ownerUserId]);
     return rows[0] || null;
   },
 
@@ -42,9 +36,9 @@ export const RestaurantModel = {
     const params = [];
 
     if (filters.search) {
-      sql += ` AND (name LIKE ? OR cuisine LIKE ? OR address LIKE ?)`;
+      sql += ` AND (name LIKE ? OR cuisine LIKE ? OR address LIKE ? OR description LIKE ?)`;
       const term = `%${filters.search}%`;
-      params.push(term, term, term);
+      params.push(term, term, term, term);
     }
 
     if (filters.cuisine) {
@@ -57,7 +51,21 @@ export const RestaurantModel = {
       params.push(filters.price_level);
     }
 
-    sql += ` ORDER BY rating_average DESC, created_at DESC`;
+    if (filters.location) {
+      sql += ` AND address LIKE ?`;
+      params.push(`%${filters.location}%`);
+    }
+
+    if (filters.is_open !== undefined && filters.is_open !== '') {
+      sql += ` AND is_open = ?`;
+      params.push(Number(filters.is_open) ? 1 : 0);
+    }
+
+    const sort = filters.sort || 'top_rated';
+    if (sort === 'newest') sql += ` ORDER BY created_at DESC`;
+    else if (sort === 'name') sql += ` ORDER BY name ASC`;
+    else sql += ` ORDER BY rating_average DESC, created_at DESC`;
+
     return query(sql, params);
   },
 
@@ -94,5 +102,20 @@ export const RestaurantModel = {
 
   async listAllForSuperAdmin() {
     return query(`SELECT * FROM restaurants ORDER BY id DESC`);
+  },
+
+  async listFilterOptions() {
+    const cuisines = await query(`SELECT DISTINCT cuisine FROM restaurants WHERE status = 'active' AND cuisine IS NOT NULL AND cuisine <> '' ORDER BY cuisine ASC`);
+    const locations = await query(`SELECT DISTINCT address FROM restaurants WHERE status = 'active' AND address IS NOT NULL AND address <> '' ORDER BY address ASC`);
+    return {
+      cuisines: cuisines.map((row) => row.cuisine),
+      locations: locations.map((row) => row.address),
+      price_levels: ['$', '$$', '$$$'],
+      sorts: [
+        { value: 'top_rated', label: 'Top Rated' },
+        { value: 'newest', label: 'Newest' },
+        { value: 'name', label: 'Name' },
+      ],
+    };
   },
 };
