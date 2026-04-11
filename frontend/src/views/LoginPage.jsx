@@ -1,10 +1,10 @@
-// v7
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Input } from '../shared/ui';
 import imgLogo from '../assets/43f7673940367781fb7ec14544ebbbad91e6ffee.png';
 import { toast } from 'sonner';
 import { authenticateUser, registerUser } from '../controllers/authController';
+import { BackButton } from '../shared/navigation';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -50,7 +50,12 @@ export function LoginPage() {
   return (
     <div className="min-h-screen bg-white px-4 py-6">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex items-start justify-start"><img src={imgLogo} alt="Annaya" className="h-20 w-auto" /></div>
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <BackButton fallbackPath="/" variant="outline" />
+          <Link to="/" className="flex items-center justify-end">
+            <img src={imgLogo} alt="Annaya" className="h-20 w-auto" />
+          </Link>
+        </div>
         <div className="mb-8 flex justify-center">
           <div className="inline-flex rounded-full border-2 border-black bg-gray-100 p-1">
             <button onClick={() => setActiveTab('signup')} className={`rounded-full px-6 py-2 text-base font-medium ${activeTab === 'signup' ? 'bg-[#22C55E] text-white' : 'bg-white text-black'}`}>Sign up</button>
