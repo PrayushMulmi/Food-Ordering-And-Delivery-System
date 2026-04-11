@@ -38,3 +38,4 @@ export const deleteMenuItem = asyncHandler(async (req, res) => {
   await MenuModel.remove(req.params.id);
   sendResponse(res, 200, "Menu item deleted");
 });
+//
