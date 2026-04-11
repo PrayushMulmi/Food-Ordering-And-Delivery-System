@@ -1,11 +1,14 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
-import { Button } from '../../shared/ui';
+import { LogOut, User } from 'lucide-react';
+import { Button, ConfirmDialog } from '../../shared/ui';
 import { clearSession } from '../../lib/auth';
+import { BackButton } from '../../shared/navigation';
+import { useState } from 'react';
 
 export function SuperAdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
 
   const navLinks = [
     { path: '/superadmin/dashboard', label: 'Dashboard' },
@@ -14,12 +17,12 @@ export function SuperAdminLayout() {
   ];
 
   const isActive = (path) => location.pathname === path;
+  const fallbackPath = location.pathname === '/superadmin/dashboard' ? '/superadmin' : '/superadmin/dashboard';
 
   const logout = () => {
-    if (window.confirm('Are you sure you want to logout?')) {
-      clearSession();
-      navigate('/superadmin');
-    }
+    clearSession();
+    setLogoutDialogOpen(false);
+    navigate('/superadmin');
   };
 
   return (
@@ -42,16 +45,35 @@ export function SuperAdminLayout() {
                 </Link>
               ))}
             </nav>
-            <Button variant="ghost" size="icon" onClick={logout} className="hover:bg-white/50">
-              <LogOut className="h-6 w-6" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/superadmin/profile')} className="hover:bg-white/50">
+                <User className="h-6 w-6" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setLogoutDialogOpen(true)} className="hover:bg-white/50">
+                <LogOut className="h-6 w-6" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
+      <div className="container mx-auto px-4 pt-4">
+        <BackButton fallbackPath={fallbackPath} />
+      </div>
+
       <main>
         <Outlet />
       </main>
+
+      <ConfirmDialog
+        open={logoutDialogOpen}
+        title="Log out of super admin?"
+        description="You will return to the super admin login page and end this session."
+        confirmText="Logout"
+        confirmVariant="destructive"
+        onCancel={() => setLogoutDialogOpen(false)}
+        onConfirm={logout}
+      />
     </div>
   );
 }
