@@ -1,152 +1,91 @@
-import { jsx, jsxs } from "react/jsx-runtime";
-import { useState } from "react";
-import { useNavigate } from 'react-router-dom';
-import { Button } from "../shared/ui";
-import { Input } from "../shared/ui";
-import { Label } from "../shared/ui";
-import { Separator } from "../shared/ui";
-import { X, Clock } from "lucide-react";
-import { toast } from "sonner";
-const mockCart = [
-  { id: 1, name: "Delicious Gourmet Burger", price: 443, quantity: 1, restaurant: "Rudra Cafe" }
-];
-function Checkout() {
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button } from '../shared/ui';
+import { api } from '../lib/api';
+import { toast } from 'sonner';
+import { notifyBasketChanged } from '../lib/basket';
+
+export function Checkout() {
   const navigate = useNavigate();
-  const [promoCode, setPromoCode] = useState("");
-  const subtotal = mockCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shipping = 90;
-  const total = subtotal + shipping;
-  const handlePlaceOrder = (e) => {
-    e.preventDefault();
-    toast.success("Order placed successfully!");
-    navigate("/order/1");
+  const [basket, setBasket] = useState({ items: [] });
+  const [loading, setLoading] = useState(true);
+
+  const loadBasket = () => api.get('/api/basket').then((res) => setBasket(res.data || { items: [] })).finally(() => setLoading(false));
+  useEffect(() => { loadBasket().catch(() => {}); }, []);
+
+  const subtotal = useMemo(() => Number(basket.subtotal || 0), [basket]);
+
+  const updateQuantity = async (itemId, quantity) => {
+    try {
+      if (quantity <= 0) await api.delete(`/api/basket/items/${itemId}`);
+      else await api.put(`/api/basket/items/${itemId}`, { quantity });
+      notifyBasketChanged();
+      await loadBasket();
+    } catch (error) {
+      toast.error(error.message || 'Could not update basket');
+    }
   };
-  return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-white", children: /* @__PURE__ */ jsx("div", { className: "container mx-auto px-4 py-8", children: /* @__PURE__ */ jsxs("div", { className: "grid lg:grid-cols-2 gap-8", children: [
-    /* @__PURE__ */ jsx("div", { className: "space-y-8", children: /* @__PURE__ */ jsxs("div", { children: [
-      /* @__PURE__ */ jsx("h1", { className: "text-5xl font-bold mb-8", children: "Delivery Details" }),
-      /* @__PURE__ */ jsxs("section", { className: "mb-8", children: [
-        /* @__PURE__ */ jsx("h2", { className: "text-2xl font-semibold mb-4", children: "Order" }),
-        mockCart.map((item) => /* @__PURE__ */ jsxs("div", { className: "bg-white border-2 border-black rounded-2xl p-4 flex gap-4 items-center", children: [
-          /* @__PURE__ */ jsx("div", { className: "w-32 h-32 bg-gray-300 rounded-xl flex-shrink-0" }),
-          /* @__PURE__ */ jsxs("div", { className: "flex-1", children: [
-            /* @__PURE__ */ jsx("h3", { className: "font-semibold text-lg", children: item.name }),
-            /* @__PURE__ */ jsx("p", { className: "text-gray-600", children: item.restaurant }),
-            /* @__PURE__ */ jsxs("p", { className: "text-xl font-bold mt-2", children: [
-              "Rs. ",
-              item.price
-            ] })
-          ] }),
-          /* @__PURE__ */ jsx("button", { className: "p-2 hover:bg-gray-100 rounded-full", children: /* @__PURE__ */ jsx(X, { className: "h-6 w-6" }) })
-        ] }, item.id))
-      ] }),
-      /* @__PURE__ */ jsxs("section", { className: "mb-6", children: [
-        /* @__PURE__ */ jsx("h2", { className: "text-2xl font-semibold mb-2", children: "Restaurant Details" }),
-        /* @__PURE__ */ jsx("p", { className: "text-xl", children: "Rudra Cafe" }),
-        /* @__PURE__ */ jsx("p", { className: "text-gray-600", children: "landmark 3800, ktm" })
-      ] }),
-      /* @__PURE__ */ jsxs("section", { className: "mb-6", children: [
-        /* @__PURE__ */ jsx("h2", { className: "text-2xl font-semibold mb-2", children: "Estimated Arrival" }),
-        /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-2 text-[#F97316]", children: [
-          /* @__PURE__ */ jsx(Clock, { className: "h-5 w-5" }),
-          /* @__PURE__ */ jsx("p", { className: "text-xl font-semibold", children: "30-35 minutes" })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxs("div", { className: "bg-white border-2 border-gray-300 rounded-2xl overflow-hidden", children: [
-        /* @__PURE__ */ jsx("div", { className: "bg-gray-300 border-b-2 border-gray-400 p-4", children: /* @__PURE__ */ jsxs("h3", { className: "text-xl font-medium text-center", children: [
-          mockCart.length,
-          " Item ordered"
-        ] }) }),
-        /* @__PURE__ */ jsxs("div", { className: "p-6 space-y-3", children: [
-          /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-lg", children: [
-            /* @__PURE__ */ jsx("span", { children: "Subtotal" }),
-            /* @__PURE__ */ jsxs("span", { children: [
-              "Rs ",
-              subtotal
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-lg", children: [
-            /* @__PURE__ */ jsx("span", { children: "Shipping" }),
-            /* @__PURE__ */ jsx("span", { children: shipping })
-          ] }),
-          /* @__PURE__ */ jsx(Separator, {}),
-          /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-xl font-bold", children: [
-            /* @__PURE__ */ jsx("span", { children: "Total" }),
-            /* @__PURE__ */ jsxs("span", { children: [
-              "Rs ",
-              total
-            ] })
-          ] })
-        ] })
-      ] })
-    ] }) }),
-    /* @__PURE__ */ jsxs("div", { children: [
-      /* @__PURE__ */ jsx("h2", { className: "text-2xl font-semibold mb-6", children: "Confirm Your Details" }),
-      /* @__PURE__ */ jsxs("form", { onSubmit: handlePlaceOrder, className: "space-y-5", children: [
-        /* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsx(
-          Input,
-          {
-            placeholder: "Full Name",
-            className: "bg-gray-100 h-14",
-            defaultValue: "John Doe",
-            disabled: true
-          }
-        ) }),
-        /* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsx(
-          Input,
-          {
-            placeholder: "Email Address",
-            className: "bg-gray-100 h-14",
-            defaultValue: "john@example.com",
-            disabled: true
-          }
-        ) }),
-        /* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsx(
-          Input,
-          {
-            placeholder: "Contact Number",
-            className: "bg-gray-100 h-14",
-            defaultValue: "+977 9812345678",
-            disabled: true
-          }
-        ) }),
-        /* @__PURE__ */ jsx("div", { children: /* @__PURE__ */ jsx(
-          Input,
-          {
-            placeholder: "Delivery Address",
-            className: "bg-gray-100 h-14",
-            defaultValue: "Kathmandu, Nepal",
-            disabled: true
-          }
-        ) }),
-        /* @__PURE__ */ jsx(Separator, { className: "my-6" }),
-        /* @__PURE__ */ jsxs("div", { children: [
-          /* @__PURE__ */ jsx(Label, { className: "text-lg mb-2 block", children: "Your Loyalty Coupons" }),
-          /* @__PURE__ */ jsx("div", { className: "bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center text-gray-500", children: "No coupons available" })
-        ] }),
-        /* @__PURE__ */ jsxs("div", { children: [
-          /* @__PURE__ */ jsx(Label, { className: "text-lg mb-2 block", children: "Promo Codes" }),
-          /* @__PURE__ */ jsx(
-            Input,
-            {
-              placeholder: "Enter promo code",
-              value: promoCode,
-              onChange: (e) => setPromoCode(e.target.value),
-              className: "h-12"
-            }
-          )
-        ] }),
-        /* @__PURE__ */ jsx("div", { className: "pt-6", children: /* @__PURE__ */ jsx(
-          Button,
-          {
-            type: "submit",
-            className: "w-full bg-[#F97316] hover:bg-[#EA580C] text-white h-16 text-2xl font-semibold",
-            children: "Order Now"
-          }
-        ) })
-      ] })
-    ] })
-  ] }) }) });
+
+  const clearBasket = async () => {
+    try {
+      await api.delete('/api/basket');
+      notifyBasketChanged();
+      await loadBasket();
+      toast.success('Basket cleared');
+    } catch (error) {
+      toast.error(error.message || 'Could not clear basket');
+    }
+  };
+
+  if (loading) return <div className="container mx-auto px-4 py-10">Loading basket...</div>;
+
+  return (
+    <div className="container mx-auto px-4 py-10">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold">Your basket</h1>
+          <p className="text-gray-600">Customer details are moved to checkout. This page is only for basket review and edits.</p>
+        </div>
+        {!!basket.items?.length && <Button variant="outline" onClick={clearBasket}>Clear basket</Button>}
+      </div>
+
+      {!basket.items?.length ? (
+        <div className="rounded-3xl border bg-white p-10 text-center shadow-sm">
+          <p className="text-lg text-gray-600">Your basket is empty.</p>
+          <Button asChild className="mt-4"><Link to="/restaurants">Browse restaurants</Link></Button>
+        </div>
+      ) : (
+        <div className="grid gap-8 lg:grid-cols-[1.6fr_1fr]">
+          <div className="space-y-4">
+            {basket.items.map((item) => (
+              <div key={item.id} className="rounded-3xl border bg-white p-5 shadow-sm">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">{item.name}</h3>
+                    <p className="text-sm text-gray-500">{item.category}</p>
+                    <p className="mt-2 font-medium text-[#16A34A]">Rs. {Number(item.total_price || 0).toFixed(2)}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button variant="outline" onClick={() => updateQuantity(item.id, Number(item.quantity) - 1)}>-</Button>
+                    <span className="min-w-8 text-center font-semibold">{item.quantity}</span>
+                    <Button variant="outline" onClick={() => updateQuantity(item.id, Number(item.quantity) + 1)}>+</Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <aside className="rounded-3xl border bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-semibold">Basket summary</h2>
+            <div className="mt-4 space-y-3 text-sm text-gray-600">
+              <div className="flex items-center justify-between"><span>Restaurant</span><span className="font-medium text-gray-900">{basket.restaurant_name || 'Selected restaurant'}</span></div>
+              <div className="flex items-center justify-between"><span>Items</span><span className="font-medium text-gray-900">{basket.items.length}</span></div>
+              <div className="flex items-center justify-between"><span>Subtotal</span><span className="font-medium text-gray-900">Rs. {subtotal.toFixed(2)}</span></div>
+            </div>
+            <Button className="mt-6 w-full" onClick={() => navigate('/order-checkout')}>Proceed to checkout</Button>
+          </aside>
+        </div>
+      )}
+    </div>
+  );
 }
-export {
-  Checkout
-};
