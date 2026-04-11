@@ -4,6 +4,11 @@ import ApiError from "../utils/ApiError.js";
 import { OrderModel } from "../models/orderModel.js";
 import { RestaurantModel } from "../models/restaurantModel.js";
 
+export const previewOrder = asyncHandler(async (req, res) => {
+  const preview = await OrderModel.previewOrder(req.user.id, req.body || {});
+  sendResponse(res, 200, "Order pricing preview fetched", preview);
+});
+
 export const placeOrder = asyncHandler(async (req, res) => {
   const order = await OrderModel.placeOrder(req.user.id, req.body);
   sendResponse(res, 201, "Order placed successfully", order);
