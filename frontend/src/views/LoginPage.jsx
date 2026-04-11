@@ -1,195 +1,91 @@
-import { useState } from "react";
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from "../shared/ui";
-import { Input } from "../shared/ui";
-import { Label } from "../shared/ui";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../shared/ui";
-import imgLogo from "../assets/43f7673940367781fb7ec14544ebbbad91e6ffee.png";
-import { toast } from "sonner";
+import { useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Button, Input } from '../shared/ui';
+import imgLogo from '../assets/43f7673940367781fb7ec14544ebbbad91e6ffee.png';
+import { toast } from 'sonner';
+import { authenticateUser, registerUser } from '../controllers/authController';
+import { BackButton } from '../shared/navigation';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("login");
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.pathname === '/signup' ? 'signup' : 'login');
+  const [loading, setLoading] = useState(false);
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [signupForm, setSignupForm] = useState({ full_name: '', email: '', phone: '', password: '', confirm_password: '' });
 
-  const handleLogin = (e) => {
+  const redirectPath = useMemo(() => location.state?.from || '/dashboard', [location.state]);
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    toast.success("Login successful!");
-    navigate("/dashboard");
+    setLoading(true);
+    try {
+      await authenticateUser(loginForm);
+      toast.success('Login successful');
+      navigate(redirectPath, { replace: true });
+    } catch (error) {
+      toast.error(error.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
-    toast.success("Account created successfully!");
-    navigate("/dashboard");
+    if (signupForm.password !== signupForm.confirm_password) {
+      return toast.error('Passwords do not match');
+    }
+    setLoading(true);
+    try {
+      await registerUser({ ...signupForm, role: 'customer', food_preferences: [] });
+      toast.success('Account created successfully');
+      navigate('/dashboard', { replace: true });
+    } catch (error) {
+      toast.error(error.message || 'Signup failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full max-w-6xl">
-        {/* Logo */}
-        <div className="flex justify-center mb-8">
-          <img src={imgLogo} alt="Annaya" className="h-24 w-auto" />
+    <div className="min-h-screen bg-white px-4 py-6">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <BackButton fallbackPath="/" variant="outline" />
+          <Link to="/" className="flex items-center justify-end">
+            <img src={imgLogo} alt="Annaya" className="h-20 w-auto" />
+          </Link>
         </div>
-
-        {/* Tab Switcher */}
-        <div className="flex justify-center mb-8">
-          <div className="inline-flex bg-gray-100 rounded-full p-1 border-4 border-black">
-            <button
-              onClick={() => setActiveTab("signup")}
-              className={`px-8 py-2 rounded-full text-lg font-medium transition-colors ${
-                activeTab === "signup"
-                  ? "bg-[#22C55E] text-black"
-                  : "bg-white text-black"
-              }`}
-            >
-              SignUp
-            </button>
-            <button
-              onClick={() => setActiveTab("login")}
-              className={`px-8 py-2 rounded-full text-lg font-medium transition-colors ${
-                activeTab === "login"
-                  ? "bg-[#22C55E] text-black"
-                  : "bg-white text-black"
-              }`}
-            >
-              Login
-            </button>
+        <div className="mb-8 flex justify-center">
+          <div className="inline-flex rounded-full border-2 border-black bg-gray-100 p-1">
+            <button onClick={() => setActiveTab('signup')} className={`rounded-full px-6 py-2 text-base font-medium ${activeTab === 'signup' ? 'bg-[#22C55E] text-white' : 'bg-white text-black'}`}>Sign up</button>
+            <button onClick={() => setActiveTab('login')} className={`rounded-full px-6 py-2 text-base font-medium ${activeTab === 'login' ? 'bg-[#22C55E] text-white' : 'bg-white text-black'}`}>Login</button>
           </div>
         </div>
 
-        {/* Forms Container */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-          {/* Signup Form */}
-          <div
-            className={`bg-[#22C55E] rounded-3xl p-12 transition-all duration-300 ${
-              activeTab === "signup" ? "opacity-100 scale-100" : "opacity-50 scale-95"
-            }`}
-          >
-            <h2 className="text-5xl font-bold text-black mb-4">Signup</h2>
-            <p className="text-3xl text-black mb-8">Create an Account!</p>
-
-            <form onSubmit={handleSignup} className="space-y-5">
-              <div>
-                <Input
-                  placeholder="Full Name"
-                  className="bg-white/90 h-14 text-base"
-                  required
-                />
-              </div>
-              <div>
-                <Input
-                  type="email"
-                  placeholder="Email Address"
-                  className="bg-white/90 h-14 text-base"
-                  required
-                />
-              </div>
-              <div>
-                <Input
-                  type="tel"
-                  placeholder="Contact Number"
-                  className="bg-white/90 h-14 text-base"
-                  required
-                />
-              </div>
-              <div>
-                <Input
-                  placeholder="Location"
-                  className="bg-white/90 h-14 text-base"
-                  required
-                />
-              </div>
-
-              <div className="flex items-center gap-3 py-2">
-                <input
-                  type="checkbox"
-                  id="terms"
-                  className="w-5 h-5 border-2 border-black"
-                  required
-                />
-                <label htmlFor="terms" className="text-black text-base">
-                  I agree terms & conditions
-                </label>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-black hover:bg-gray-800 text-white h-14 text-xl font-semibold"
-              >
-                Sign up
-              </Button>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className={`rounded-3xl bg-[#22C55E] p-8 transition ${activeTab === 'signup' ? 'opacity-100' : 'opacity-60'}`}>
+            <h2 className="mb-2 text-3xl font-bold text-black">Create account</h2>
+            <p className="mb-6 text-black/80">Join Annaya and start ordering.</p>
+            <form onSubmit={handleSignup} className="space-y-4">
+              <Input placeholder="Full name" className="h-12 bg-white" value={signupForm.full_name} onChange={(e) => setSignupForm((p) => ({ ...p, full_name: e.target.value }))} required />
+              <Input type="email" placeholder="Email address" className="h-12 bg-white" value={signupForm.email} onChange={(e) => setSignupForm((p) => ({ ...p, email: e.target.value }))} required />
+              <Input type="tel" placeholder="Phone number" className="h-12 bg-white" value={signupForm.phone} onChange={(e) => setSignupForm((p) => ({ ...p, phone: e.target.value }))} required />
+              <Input type="password" placeholder="Password" className="h-12 bg-white" value={signupForm.password} onChange={(e) => setSignupForm((p) => ({ ...p, password: e.target.value }))} required />
+              <Input type="password" placeholder="Confirm password" className="h-12 bg-white" value={signupForm.confirm_password} onChange={(e) => setSignupForm((p) => ({ ...p, confirm_password: e.target.value }))} required />
+              <Button type="submit" disabled={loading} className="h-12 w-full bg-black text-white hover:bg-gray-800">{loading ? 'Please wait...' : 'Create account'}</Button>
             </form>
           </div>
 
-          {/* Login Form */}
-          <div
-            className={`bg-white border-4 border-[#22C55E] rounded-3xl p-12 transition-all duration-300 ${
-              activeTab === "login" ? "opacity-100 scale-100" : "opacity-50 scale-95"
-            }`}
-          >
-            <h2 className="text-5xl font-bold text-black mb-4">Login</h2>
-            <p className="text-3xl text-black mb-8">Welcome Back!</p>
-
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div>
-                <Input
-                  placeholder="Username"
-                  className="bg-white h-14 text-base border-gray-300"
-                  required
-                />
-              </div>
-              <div>
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  className="bg-white h-14 text-base border-gray-300"
-                  required
-                />
-              </div>
-
-              <div className="pt-4">
-                <Button
-                  type="submit"
-                  className="w-full bg-black hover:bg-gray-800 text-white h-14 text-xl font-semibold"
-                >
-                  Sign In
-                </Button>
-              </div>
-
-              <div className="text-center">
-                <a href="#" className="text-sm text-gray-600 hover:text-[#22C55E]">
-                  Forgot password?
-                </a>
-              </div>
+          <div className={`rounded-3xl border-4 border-[#22C55E] bg-white p-8 transition ${activeTab === 'login' ? 'opacity-100' : 'opacity-60'}`}>
+            <h2 className="mb-2 text-3xl font-bold text-black">Welcome back</h2>
+            <p className="mb-6 text-gray-600">Login to manage orders and your basket.</p>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <Input type="email" placeholder="Email address" className="h-12" value={loginForm.email} onChange={(e) => setLoginForm((p) => ({ ...p, email: e.target.value }))} required />
+              <Input type="password" placeholder="Password" className="h-12" value={loginForm.password} onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))} required />
+              <Button type="submit" disabled={loading} className="h-12 w-full bg-[#22C55E] text-white hover:bg-[#16A34A]">{loading ? 'Please wait...' : 'Login'}</Button>
             </form>
           </div>
-        </div>
-
-        {/* Bottom Links */}
-        <div className="text-center mt-8 text-gray-600">
-          <p>
-            {activeTab === "login" ? (
-              <>
-                Don't have an account?{" "}
-                <button
-                  onClick={() => setActiveTab("signup")}
-                  className="text-[#22C55E] font-semibold hover:underline"
-                >
-                  Sign up
-                </button>
-              </>
-            ) : (
-              <>
-                Already have an account?{" "}
-                <button
-                  onClick={() => setActiveTab("login")}
-                  className="text-[#22C55E] font-semibold hover:underline"
-                >
-                  Log in
-                </button>
-              </>
-            )}
-          </p>
         </div>
       </div>
     </div>
