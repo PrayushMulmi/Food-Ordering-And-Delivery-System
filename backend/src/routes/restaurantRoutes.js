@@ -8,3 +8,4 @@ router.get("/sections", getRestaurantSections);
 router.get("/:id", getRestaurantById);
 
 export default router;
+//
