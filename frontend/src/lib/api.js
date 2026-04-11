@@ -1,4 +1,3 @@
-//v7
 import { clearSession, getToken, setSession } from './auth';
 
 export const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5050';
@@ -8,7 +7,13 @@ async function request(path, options = {}) {
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch (error) {
+    throw new Error('Unable to reach the API. Check backend URL, CORS settings, and that the server is running.');
+  }
+
   let data = null;
   try { data = await response.json(); } catch { data = null; }
 
