@@ -46,25 +46,41 @@ export const RestaurantModel = {
   },
 
   async list(filters = {}) {
-    let sql = `SELECT * FROM restaurants WHERE status = 'active'`;
+    let sql = `SELECT * FROM restaurants r WHERE r.status = 'active'`;
     const params = [];
+
     if (filters.search) {
-      sql += ` AND (name LIKE ? OR cuisine LIKE ? OR address LIKE ?)`;
+      sql += ` AND (
+        r.name LIKE ?
+        OR r.cuisine LIKE ?
+        OR r.address LIKE ?
+        OR EXISTS (
+          SELECT 1
+          FROM menu_items mi
+          WHERE mi.restaurant_id = r.id
+            AND mi.is_available = 1
+            AND (
+              mi.name LIKE ?
+              OR mi.description LIKE ?
+              OR mi.category LIKE ?
+            )
+        )
+      )`;
       const needle = `%${filters.search}%`;
-      params.push(needle, needle, needle);
+      params.push(needle, needle, needle, needle, needle, needle);
     }
-    if (filters.cuisine) { sql += ` AND cuisine = ?`; params.push(filters.cuisine); }
-    if (filters.location) { sql += ` AND address = ?`; params.push(filters.location); }
-    if (filters.price_level) { sql += ` AND price_level = ?`; params.push(filters.price_level); }
-    if (filters.min_rating) { sql += ` AND rating_average >= ?`; params.push(Number(filters.min_rating)); }
-    if (String(filters.open_now || '') === '1') { sql += ` AND is_open = 1`; }
+    if (filters.cuisine) { sql += ` AND r.cuisine = ?`; params.push(filters.cuisine); }
+    if (filters.location) { sql += ` AND r.address = ?`; params.push(filters.location); }
+    if (filters.price_level) { sql += ` AND r.price_level = ?`; params.push(filters.price_level); }
+    if (filters.min_rating) { sql += ` AND r.rating_average >= ?`; params.push(Number(filters.min_rating)); }
+    if (String(filters.open_now || '') === '1') { sql += ` AND r.is_open = 1`; }
 
     const sort = filters.sort || 'top_rated';
-    if (sort === 'newest') sql += ` ORDER BY created_at DESC`;
-    else if (sort === 'name') sql += ` ORDER BY name ASC`;
-    else if (sort === 'fast_delivery') sql += ` ORDER BY is_open DESC, rating_average DESC, created_at ASC`;
-    else if (sort === 'best_quality') sql += ` ORDER BY rating_average DESC, price_level DESC`;
-    else sql += ` ORDER BY rating_average DESC, created_at DESC`;
+    if (sort === 'newest') sql += ` ORDER BY r.created_at DESC`;
+    else if (sort === 'name') sql += ` ORDER BY r.name ASC`;
+    else if (sort === 'fast_delivery') sql += ` ORDER BY r.is_open DESC, r.rating_average DESC, r.created_at ASC`;
+    else if (sort === 'best_quality') sql += ` ORDER BY r.rating_average DESC, r.price_level DESC`;
+    else sql += ` ORDER BY r.rating_average DESC, r.created_at DESC`;
 
     const rows = await query(sql, params);
     return rows.map((row) => this.normalize(row));
