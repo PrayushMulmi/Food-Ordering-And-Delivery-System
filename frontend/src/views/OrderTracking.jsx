@@ -1,85 +1,100 @@
-import { jsx, jsxs } from "react/jsx-runtime";
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Button } from "../shared/ui";
-import { Check, Package, Truck, MapPin, Clock } from "lucide-react";
-const orderStatuses = [
-  { id: 1, name: "Order Confirmed", icon: Check, completed: true },
-  { id: 2, name: "Preparing", icon: Package, completed: true },
-  { id: 3, name: "Out for Delivery", icon: Truck, completed: true },
-  { id: 4, name: "Delivered", icon: MapPin, completed: false }
+import { Badge, Button, ConfirmDialog } from '../shared/ui';
+import { Check, Clock, MapPin, Package, Truck } from 'lucide-react';
+import { api } from '../lib/api';
+import { toast } from 'sonner';
+import { LiveOrderMap } from '../components/LiveOrderMap';
+
+const steps = [
+  { key: 'Pending', label: 'Order Confirmed', icon: Check },
+  { key: 'Preparing', label: 'Preparing', icon: Package },
+  { key: 'Out for Delivery', label: 'Out for Delivery', icon: Truck },
+  { key: 'Delivered', label: 'Delivered', icon: MapPin },
 ];
-function OrderTracking() {
+
+export function OrderTracking() {
   const { id } = useParams();
-  return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-white", children: /* @__PURE__ */ jsxs("div", { className: "container mx-auto px-4 py-12 max-w-4xl", children: [
-    /* @__PURE__ */ jsxs("div", { className: "text-center mb-12", children: [
-      /* @__PURE__ */ jsx("h1", { className: "text-5xl font-bold mb-4", children: "Track Your Order" }),
-      /* @__PURE__ */ jsxs("p", { className: "text-xl text-gray-600", children: [
-        "Order ID: #",
-        id
-      ] })
-    ] }),
-    /* @__PURE__ */ jsx("div", { className: "mb-12", children: /* @__PURE__ */ jsx("div", { className: "relative", children: orderStatuses.map((status, index) => /* @__PURE__ */ jsxs("div", { className: "flex items-start gap-4 mb-8 last:mb-0 relative", children: [
-      index !== orderStatuses.length - 1 && /* @__PURE__ */ jsx(
-        "div",
-        {
-          className: `absolute left-6 top-14 w-1 h-16 ${status.completed ? "bg-[#22C55E]" : "bg-gray-300"}`
-        }
-      ),
-      /* @__PURE__ */ jsx(
-        "div",
-        {
-          className: `w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${status.completed ? "bg-[#22C55E] text-white" : "bg-gray-200 text-gray-400"}`,
-          children: /* @__PURE__ */ jsx(status.icon, { className: "h-6 w-6" })
-        }
-      ),
-      /* @__PURE__ */ jsxs("div", { className: "flex-1 pt-2", children: [
-        /* @__PURE__ */ jsx("h3", { className: "text-xl font-semibold mb-1", children: status.name }),
-        status.completed && /* @__PURE__ */ jsx("p", { className: "text-sm text-gray-500", children: "Completed at 2:30 PM" })
-      ] })
-    ] }, status.id)) }) }),
-    /* @__PURE__ */ jsxs("div", { className: "bg-gradient-to-br from-[#22C55E]/10 to-[#22C55E]/5 rounded-2xl p-8 mb-8", children: [
-      /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-4 mb-6", children: [
-        /* @__PURE__ */ jsx("div", { className: "h-16 w-16 bg-[#F97316]/20 rounded-full flex items-center justify-center", children: /* @__PURE__ */ jsx(Clock, { className: "h-8 w-8 text-[#F97316]" }) }),
-        /* @__PURE__ */ jsxs("div", { children: [
-          /* @__PURE__ */ jsx("h3", { className: "text-2xl font-bold", children: "Arriving Soon!" }),
-          /* @__PURE__ */ jsx("p", { className: "text-lg text-gray-600", children: "Estimated delivery in 15 minutes" })
-        ] })
-      ] }),
-      /* @__PURE__ */ jsxs("div", { className: "grid md:grid-cols-2 gap-4 pt-4 border-t border-gray-200", children: [
-        /* @__PURE__ */ jsxs("div", { children: [
-          /* @__PURE__ */ jsx("p", { className: "text-sm text-gray-600 mb-1", children: "Delivery Address" }),
-          /* @__PURE__ */ jsx("p", { className: "font-semibold", children: "Kathmandu, Nepal" })
-        ] }),
-        /* @__PURE__ */ jsxs("div", { children: [
-          /* @__PURE__ */ jsx("p", { className: "text-sm text-gray-600 mb-1", children: "Restaurant" }),
-          /* @__PURE__ */ jsx("p", { className: "font-semibold", children: "Rudra Cafe" })
-        ] })
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxs("div", { className: "bg-white border-2 border-gray-200 rounded-2xl p-6 mb-8", children: [
-      /* @__PURE__ */ jsx("h3", { className: "text-xl font-semibold mb-4", children: "Order Items" }),
-      /* @__PURE__ */ jsxs("div", { className: "space-y-3", children: [
-        /* @__PURE__ */ jsxs("div", { className: "flex justify-between", children: [
-          /* @__PURE__ */ jsx("span", { children: "Delicious Gourmet Burger \xD7 1" }),
-          /* @__PURE__ */ jsx("span", { className: "font-semibold", children: "Rs. 443" })
-        ] }),
-        /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-sm text-gray-600", children: [
-          /* @__PURE__ */ jsx("span", { children: "Delivery Fee" }),
-          /* @__PURE__ */ jsx("span", { children: "Rs. 90" })
-        ] }),
-        /* @__PURE__ */ jsx("div", { className: "h-px bg-gray-200 my-2" }),
-        /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-lg font-bold", children: [
-          /* @__PURE__ */ jsx("span", { children: "Total" }),
-          /* @__PURE__ */ jsx("span", { className: "text-[#22C55E]", children: "Rs. 533" })
-        ] })
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxs("div", { className: "flex gap-4", children: [
-      /* @__PURE__ */ jsx(Button, { variant: "outline", className: "flex-1", children: "Contact Support" }),
-      /* @__PURE__ */ jsx(Button, { className: "flex-1 bg-[#F97316] hover:bg-[#EA580C] text-white", children: "Call Delivery Partner" })
-    ] })
-  ] }) });
+  const [order, setOrder] = useState(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+
+  const loadOrder = useCallback(() => api.get(`/api/orders/my/${id}`).then((res) => setOrder(res.data || null)), [id]);
+
+  useEffect(() => {
+    loadOrder().catch(() => {});
+  }, [loadOrder]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      loadOrder().catch(() => {});
+    }, 10000);
+
+    return () => window.clearInterval(timer);
+  }, [loadOrder]);
+
+  const cancelOrder = async () => {
+    try {
+      await api.put(`/api/orders/my/${id}/cancel`, {});
+      toast.success('Order cancelled');
+      setCancelDialogOpen(false);
+      loadOrder();
+    } catch (error) {
+      toast.error(error.message || 'Could not cancel order');
+    }
+  };
+
+  const activeIndex = useMemo(() => {
+    if (!order) return 0;
+    if (order.status === 'Delivered') return 3;
+    if (order.status === 'Out for Delivery') return 2;
+    if (['Preparing', 'Ready for Dispatch'].includes(order.status)) return 1;
+    return 0;
+  }, [order]);
+
+  if (!order) return <div className="container mx-auto px-4 py-10">Loading order...</div>;
+
+  return (
+    <div className="min-h-screen bg-white">
+      <div className="container mx-auto grid max-w-6xl gap-8 px-4 py-12 lg:grid-cols-[1.3fr_1fr]">
+        <div>
+          <div className="mb-12 text-center lg:text-left"><h1 className="mb-4 text-5xl font-bold">Track Your Order</h1><p className="text-xl text-gray-600">Order ID: #{order.order_code}</p></div>
+
+          <LiveOrderMap order={order} />
+
+          <div className="mb-12 rounded-2xl bg-white">
+            <div className="relative">
+              {steps.map((step, index) => {
+                const completed = index <= activeIndex;
+                const Icon = step.icon;
+                return (
+                  <div key={step.key} className="relative mb-8 flex items-start gap-4 last:mb-0">
+                    {index !== steps.length - 1 && <div className={`absolute left-6 top-14 h-16 w-1 ${completed ? 'bg-[#22C55E]' : 'bg-gray-300'}`} />}
+                    <div className={`z-10 flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full ${completed ? 'bg-[#22C55E] text-white' : 'bg-gray-200 text-gray-400'}`}><Icon className="h-6 w-6" /></div>
+                    <div className="flex-1 pt-2">
+                      <h3 className="mb-1 text-xl font-semibold">{step.label}</h3>
+                      {completed && <p className="text-sm text-gray-500">Updated in your live order history</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mb-8 rounded-2xl bg-gradient-to-br from-[#22C55E]/10 to-[#22C55E]/5 p-8"><div className="mb-6 flex items-center gap-4"><div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#F97316]/20"><Clock className="h-8 w-8 text-[#F97316]" /></div><div><h3 className="text-2xl font-bold">{order.status === 'Delivered' ? 'Delivered Successfully' : 'Arriving Soon!'}</h3><p className="text-lg text-gray-600">{order.status === 'Delivered' ? 'Your order has arrived.' : 'Track live progress from the restaurant.'}</p></div></div><div className="grid gap-4 border-t border-gray-200 pt-4 md:grid-cols-2"><div><p className="mb-1 text-sm text-gray-600">Delivery Address</p><p className="font-semibold">{order.delivery_address}</p></div><div><p className="mb-1 text-sm text-gray-600">Restaurant</p><p className="font-semibold">{order.restaurant_name}</p></div></div></div>
+          {['Pending', 'Confirmed', 'Preparing'].includes(order.status) && <Button variant="outline" className="w-full" onClick={() => setCancelDialogOpen(true)}>Cancel order</Button>}
+        </div>
+        <aside className="rounded-3xl border bg-white p-6 shadow-sm"><div className="mb-5 flex items-start justify-between gap-4"><div><h2 className="text-2xl font-semibold">Order details</h2><p className="text-sm text-gray-500">{order.restaurant_name}</p></div><Badge>{order.status}</Badge></div><div className="space-y-3 text-sm">{(order.items || []).map((item) => <div key={item.id} className="flex items-center justify-between border-b pb-3"><span>{item.item_name} × {item.quantity}</span><span>Rs. {Number(item.total_price || 0).toFixed(2)}</span></div>)}<div className="flex items-center justify-between"><span>Subtotal</span><span>Rs. {Number(order.subtotal || 0).toFixed(2)}</span></div><div className="flex items-center justify-between"><span>Discount</span><span>- Rs. {Number(order.discount_amount || 0).toFixed(2)}</span></div><div className="flex items-center justify-between"><span>Delivery Fee</span><span>Rs. {Number(order.delivery_fee || 0).toFixed(2)}</span></div><div className="flex items-center justify-between text-base font-semibold"><span>Total</span><span>Rs. {Number(order.final_total || 0).toFixed(2)}</span></div></div></aside>
+      </div>
+
+      <ConfirmDialog
+        open={cancelDialogOpen}
+        title="Cancel this order?"
+        description="This action will cancel the current order and stop further preparation."
+        confirmText="Cancel order"
+        confirmVariant="destructive"
+        onCancel={() => setCancelDialogOpen(false)}
+        onConfirm={cancelOrder}
+      />
+    </div>
+  );
 }
-export {
-  OrderTracking
-};
