@@ -1,7 +1,30 @@
 import bcrypt from "bcryptjs";
 import { query } from "../config/db.js";
 
+const BCRYPT_PREFIX = "$2";
+
+const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+
+const parsePreferences = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
 export const UserModel = {
+  normalize(row) {
+    if (!row) return null;
+    return {
+      ...row,
+      food_preferences: parsePreferences(row.food_preferences),
+    };
+  },
+
   async create(data) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
@@ -11,7 +34,7 @@ export const UserModel = {
       VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 0)`,
       [
         data.full_name,
-        data.email,
+        normalizeEmail(data.email),
         hashedPassword,
         data.phone || null,
         data.role || "customer",
@@ -24,8 +47,8 @@ export const UserModel = {
   },
 
   async findByEmail(email) {
-    const rows = await query(`SELECT * FROM users WHERE email = ? LIMIT 1`, [
-      email,
+    const rows = await query(`SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1`, [
+      normalizeEmail(email),
     ]);
     return rows[0] || null;
   },
@@ -36,18 +59,32 @@ export const UserModel = {
        FROM users WHERE id = ? LIMIT 1`,
       [id],
     );
-    return rows[0] || null;
+    return this.normalize(rows[0] || null);
   },
 
   async findAuthUserByEmail(email) {
-    const rows = await query(`SELECT * FROM users WHERE email = ? LIMIT 1`, [
-      email,
+    const rows = await query(`SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1`, [
+      normalizeEmail(email),
     ]);
     return rows[0] || null;
   },
 
   async comparePassword(plain, hashed) {
-    return bcrypt.compare(plain, hashed);
+    if (!hashed || !String(hashed).startsWith(BCRYPT_PREFIX)) return false;
+    return bcrypt.compare(String(plain || ''), hashed);
+  },
+
+  async migratePlaintextPasswords() {
+    const rows = await query(
+      `SELECT id, password FROM users WHERE password IS NOT NULL AND password NOT LIKE '$2%'`,
+    );
+
+    for (const row of rows) {
+      const hashedPassword = await bcrypt.hash(String(row.password), 10);
+      await query(`UPDATE users SET password = ? WHERE id = ?`, [hashedPassword, row.id]);
+    }
+
+    return rows.length;
   },
 
   async updateProfile(userId, data) {
@@ -77,11 +114,12 @@ export const UserModel = {
   },
 
   async listAll() {
-    return query(
-      `SELECT id, full_name, email, phone, role, status, created_at
+    const rows = await query(
+      `SELECT id, full_name, email, phone, role, theme, food_preferences, status, created_at
        FROM users
        ORDER BY id DESC`,
     );
+    return rows.map((row) => this.normalize(row));
   },
 
   async updateStatus(id, status) {
