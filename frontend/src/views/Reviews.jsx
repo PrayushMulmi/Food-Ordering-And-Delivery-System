@@ -1,119 +1,81 @@
-import { jsx, jsxs } from "react/jsx-runtime";
-import { useState } from "react";
-import { Button } from "../shared/ui";
-import { Textarea } from "../shared/ui";
-import { Star } from "lucide-react";
-import { toast } from "sonner";
-const mockReviews = [
-  {
-    id: 1,
-    restaurant: "Rudra Cafe",
-    item: "Delicious Gourmet Burger",
-    rating: 5,
-    comment: "Amazing burger! Fresh ingredients and perfectly cooked. Will definitely order again!",
-    date: "2026-03-18"
-  },
-  {
-    id: 2,
-    restaurant: "Pizza Palace",
-    item: "Margherita Pizza",
-    rating: 4,
-    comment: "Great pizza, authentic Italian taste. Delivery was quick too.",
-    date: "2026-03-15"
-  }
-];
-function Reviews() {
-  const [newRating, setNewRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [comment, setComment] = useState("");
-  const handleSubmitReview = (e) => {
-    e.preventDefault();
-    toast.success("Review submitted successfully!");
-    setNewRating(0);
-    setComment("");
+import { useEffect, useState } from 'react';
+import { Badge, Button, Textarea } from '../shared/ui';
+import { api } from '../lib/api';
+import { toast } from 'sonner';
+
+export function Reviews() {
+  const [reviews, setReviews] = useState([]);
+  const [reviewable, setReviewable] = useState([]);
+  const [drafts, setDrafts] = useState({});
+
+  const loadData = async () => {
+    const [mine, eligible] = await Promise.all([
+      api.get('/api/reviews/mine'),
+      api.get('/api/reviews/reviewable'),
+    ]);
+    setReviews(mine.data || []);
+    setReviewable((eligible.data || []).filter((item) => !Number(item.already_reviewed)));
   };
-  return /* @__PURE__ */ jsx("div", { className: "min-h-screen bg-white", children: /* @__PURE__ */ jsx("div", { className: "container mx-auto px-4 py-12", children: /* @__PURE__ */ jsxs("div", { className: "max-w-4xl mx-auto", children: [
-    /* @__PURE__ */ jsx("h1", { className: "text-5xl font-bold mb-8", children: "Your Reviews" }),
-    /* @__PURE__ */ jsx("section", { className: "mb-12", children: /* @__PURE__ */ jsxs("div", { className: "bg-gradient-to-br from-[#22C55E]/10 to-[#22C55E]/5 rounded-2xl p-8", children: [
-      /* @__PURE__ */ jsx("h2", { className: "text-2xl font-semibold mb-6", children: "Write a Review" }),
-      /* @__PURE__ */ jsxs("form", { onSubmit: handleSubmitReview, className: "space-y-6", children: [
-        /* @__PURE__ */ jsxs("div", { children: [
-          /* @__PURE__ */ jsx("label", { className: "block text-sm font-medium mb-2", children: "Rating" }),
-          /* @__PURE__ */ jsx("div", { className: "flex gap-2", children: [1, 2, 3, 4, 5].map((star) => /* @__PURE__ */ jsx(
-            "button",
-            {
-              type: "button",
-              onClick: () => setNewRating(star),
-              onMouseEnter: () => setHoverRating(star),
-              onMouseLeave: () => setHoverRating(0),
-              className: "transition-transform hover:scale-125",
-              children: /* @__PURE__ */ jsx(
-                Star,
-                {
-                  className: `h-10 w-10 ${star <= (hoverRating || newRating) ? "fill-[#FACC15] text-[#FACC15]" : "text-gray-300"}`
-                }
-              )
-            },
-            star
-          )) })
-        ] }),
-        /* @__PURE__ */ jsxs("div", { children: [
-          /* @__PURE__ */ jsx("label", { className: "block text-sm font-medium mb-2", children: "Your Review" }),
-          /* @__PURE__ */ jsx(
-            Textarea,
-            {
-              placeholder: "Share your experience with this restaurant...",
-              value: comment,
-              onChange: (e) => setComment(e.target.value),
-              className: "min-h-32",
-              required: true
-            }
-          )
-        ] }),
-        /* @__PURE__ */ jsx(
-          Button,
-          {
-            type: "submit",
-            className: "bg-[#22C55E] hover:bg-[#16A34A] text-white",
-            disabled: newRating === 0,
-            children: "Submit Review"
-          }
-        )
-      ] })
-    ] }) }),
-    /* @__PURE__ */ jsxs("section", { children: [
-      /* @__PURE__ */ jsx("h2", { className: "text-2xl font-semibold mb-6", children: "Your Past Reviews" }),
-      /* @__PURE__ */ jsx("div", { className: "space-y-6", children: mockReviews.map((review) => /* @__PURE__ */ jsxs(
-        "div",
-        {
-          className: "bg-white border-2 border-gray-200 rounded-2xl p-6",
-          children: [
-            /* @__PURE__ */ jsxs("div", { className: "flex items-start justify-between mb-4", children: [
-              /* @__PURE__ */ jsxs("div", { children: [
-                /* @__PURE__ */ jsx("h3", { className: "text-xl font-semibold", children: review.restaurant }),
-                /* @__PURE__ */ jsx("p", { className: "text-gray-600", children: review.item })
-              ] }),
-              /* @__PURE__ */ jsx("div", { className: "flex gap-1", children: [1, 2, 3, 4, 5].map((star) => /* @__PURE__ */ jsx(
-                Star,
-                {
-                  className: `h-5 w-5 ${star <= review.rating ? "fill-[#FACC15] text-[#FACC15]" : "text-gray-300"}`
-                },
-                star
-              )) })
-            ] }),
-            /* @__PURE__ */ jsx("p", { className: "text-gray-700 mb-3", children: review.comment }),
-            /* @__PURE__ */ jsx("p", { className: "text-sm text-gray-500", children: new Date(review.date).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric"
-            }) })
-          ]
-        },
-        review.id
-      )) })
-    ] })
-  ] }) }) });
+
+  useEffect(() => { loadData().catch(() => {}); }, []);
+
+  const submitReview = async (item) => {
+    const draft = drafts[item.order_id + '-' + item.menu_item_id] || { rating: 5, comment: '' };
+    try {
+      await api.post('/api/reviews', { order_id: item.order_id, menu_item_id: item.menu_item_id, rating: Number(draft.rating || 5), comment: draft.comment || '' });
+      toast.success('Review submitted');
+      loadData();
+    } catch (error) {
+      toast.error(error.message || 'Could not submit review');
+    }
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-10 space-y-10">
+      <section>
+        <h1 className="mb-6 text-4xl font-bold">Your reviews</h1>
+        <div className="space-y-4">
+          {reviews.map((review) => (
+            <div key={review.id} className="rounded-3xl border bg-white p-6 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold">{review.restaurant_name}</h2>
+                  <p className="text-sm text-gray-500">{review.menu_item_name} • Order #{review.order_code}</p>
+                </div>
+                <Badge>{review.rating}/5</Badge>
+              </div>
+              <p className="mt-4 text-gray-700">{review.comment || 'No comment provided.'}</p>
+            </div>
+          ))}
+          {!reviews.length && <div className="rounded-3xl border bg-white p-10 text-center text-gray-600">You have not submitted any reviews yet.</div>}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-6 text-3xl font-bold">Eligible delivered items</h2>
+        <div className="space-y-4">
+          {reviewable.map((item) => {
+            const key = item.order_id + '-' + item.menu_item_id;
+            const draft = drafts[key] || { rating: 5, comment: '' };
+            return (
+              <div key={key} className="rounded-3xl border bg-white p-6 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold">{item.restaurant_name}</h3>
+                    <p className="text-sm text-gray-500">{item.item_name} • Order #{item.order_code}</p>
+                  </div>
+                  <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={draft.rating} onChange={(e) => setDrafts((p) => ({ ...p, [key]: { ...draft, rating: e.target.value } }))}>
+                    {[5,4,3,2,1].map((rating) => <option key={rating} value={rating}>{rating} star</option>)}
+                  </select>
+                </div>
+                <Textarea className="mt-4" placeholder="Write your review" value={draft.comment} onChange={(e) => setDrafts((p) => ({ ...p, [key]: { ...draft, comment: e.target.value } }))} />
+                <Button className="mt-4" onClick={() => submitReview(item)}>Submit review</Button>
+              </div>
+            );
+          })}
+          {!reviewable.length && <div className="rounded-3xl border bg-white p-10 text-center text-gray-600">No delivered items are waiting for your review.</div>}
+        </div>
+      </section>
+    </div>
+  );
 }
-export {
-  Reviews
-};
