@@ -1,5 +1,17 @@
 USE food_ordering_and_delivery_app;
 
+DROP TABLE IF EXISTS admin_action_logs;
+DROP TABLE IF EXISTS reviews;
+DROP TABLE IF EXISTS order_status_logs;
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS coupons;
+DROP TABLE IF EXISTS basket_items;
+DROP TABLE IF EXISTS baskets;
+DROP TABLE IF EXISTS menu_items;
+DROP TABLE IF EXISTS restaurants;
+DROP TABLE IF EXISTS users;
+
 CREATE TABLE IF NOT EXISTS users (
   id INT PRIMARY KEY AUTO_INCREMENT,
   full_name VARCHAR(150) NOT NULL,
@@ -23,6 +35,8 @@ CREATE TABLE IF NOT EXISTS restaurants (
   address VARCHAR(255) NULL,
   contact_phone VARCHAR(30) NULL,
   image_url TEXT NULL,
+  cover_photo_url TEXT NULL,
+  gallery_images JSON NULL,
   price_level VARCHAR(10) DEFAULT '$$',
   rating_average DECIMAL(3,2) DEFAULT 0.00,
   is_open TINYINT(1) DEFAULT 1,
@@ -95,16 +109,7 @@ CREATE TABLE IF NOT EXISTS orders (
   final_total DECIMAL(10,2) NOT NULL,
   delivery_address VARCHAR(255) NOT NULL,
   notes TEXT NULL,
-  status ENUM(
-    'Pending',
-    'Confirmed',
-    'Preparing',
-    'Ready for Dispatch',
-    'Out for Delivery',
-    'Delivered',
-    'Cancelled',
-    'Refunded'
-  ) DEFAULT 'Pending',
+  status ENUM('Pending','Confirmed','Preparing','Ready for Dispatch','Out for Delivery','Delivered','Cancelled','Refunded') DEFAULT 'Pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE,
@@ -151,17 +156,6 @@ CREATE TABLE IF NOT EXISTS reviews (
   CONSTRAINT chk_rating_range CHECK (rating >= 1 AND rating <= 5)
 );
 
-CREATE TABLE IF NOT EXISTS notifications (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  user_id INT NOT NULL,
-  title VARCHAR(150) NOT NULL,
-  message TEXT NOT NULL,
-  type VARCHAR(50) DEFAULT 'system',
-  is_read TINYINT(1) DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS admin_action_logs (
   id INT PRIMARY KEY AUTO_INCREMENT,
   action_by_user_id INT NOT NULL,
@@ -172,43 +166,360 @@ CREATE TABLE IF NOT EXISTS admin_action_logs (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (action_by_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+INSERT INTO users (id, full_name, email, password, phone, role, theme, food_preferences, status, force_password_change) VALUES
+(1, 'System Super Admin', 'superadmin1@annaya.test', 'SuperAdmin123!', '9800000001', 'super_admin', 'light', JSON_ARRAY('Nepali','Indian'), 'active', 0),
+(2, 'Platform Super Admin', 'superadmin2@annaya.test', 'SuperAdmin456!', '9800000002', 'super_admin', 'light', JSON_ARRAY('Nepali','Indian'), 'active', 0),
+(3, 'Owner 1', 'admin1@annaya.test', 'Admin1Pass!', '981100001', 'restaurant_admin', 'light', JSON_ARRAY('Multi Cuisine'), 'active', 0),
+(4, 'Owner 2', 'admin2@annaya.test', 'Admin2Pass!', '981100002', 'restaurant_admin', 'light', JSON_ARRAY('Indian'), 'active', 0),
+(5, 'Owner 3', 'admin3@annaya.test', 'Admin3Pass!', '981100003', 'restaurant_admin', 'light', JSON_ARRAY('Nepali'), 'active', 0),
+(6, 'Owner 4', 'admin4@annaya.test', 'Admin4Pass!', '981100004', 'restaurant_admin', 'light', JSON_ARRAY('Italian'), 'active', 0),
+(7, 'Owner 5', 'admin5@annaya.test', 'Admin5Pass!', '981100005', 'restaurant_admin', 'light', JSON_ARRAY('Japanese'), 'active', 0),
+(8, 'Owner 6', 'admin6@annaya.test', 'Admin6Pass!', '981100006', 'restaurant_admin', 'light', JSON_ARRAY('Chinese'), 'active', 0),
+(9, 'Owner 7', 'admin7@annaya.test', 'Admin7Pass!', '981100007', 'restaurant_admin', 'light', JSON_ARRAY('Indian'), 'active', 0),
+(10, 'Owner 8', 'admin8@annaya.test', 'Admin8Pass!', '981100008', 'restaurant_admin', 'light', JSON_ARRAY('Healthy'), 'active', 0),
+(11, 'Owner 9', 'admin9@annaya.test', 'Admin9Pass!', '981100009', 'restaurant_admin', 'light', JSON_ARRAY('Fast Food'), 'active', 0),
+(12, 'Owner 10', 'admin10@annaya.test', 'Admin10Pass!', '981100010', 'restaurant_admin', 'light', JSON_ARRAY('Indian'), 'active', 0),
+(13, 'Owner 11', 'admin11@annaya.test', 'Admin11Pass!', '981100011', 'restaurant_admin', 'light', JSON_ARRAY('Vietnamese'), 'active', 0),
+(14, 'Owner 12', 'admin12@annaya.test', 'Admin12Pass!', '981100012', 'restaurant_admin', 'light', JSON_ARRAY('Mediterranean'), 'active', 0),
+(15, 'Owner 13', 'admin13@annaya.test', 'Admin13Pass!', '981100013', 'restaurant_admin', 'light', JSON_ARRAY('Italian'), 'active', 0),
+(16, 'Owner 14', 'admin14@annaya.test', 'Admin14Pass!', '981100014', 'restaurant_admin', 'light', JSON_ARRAY('Nepali'), 'active', 0),
+(17, 'Owner 15', 'admin15@annaya.test', 'Admin15Pass!', '981100015', 'restaurant_admin', 'light', JSON_ARRAY('Middle Eastern'), 'active', 0),
+(18, 'Owner 16', 'admin16@annaya.test', 'Admin16Pass!', '981100016', 'restaurant_admin', 'light', JSON_ARRAY('Japanese'), 'active', 0),
+(19, 'Owner 17', 'admin17@annaya.test', 'Admin17Pass!', '981100017', 'restaurant_admin', 'light', JSON_ARRAY('Nepali'), 'active', 0),
+(20, 'Owner 18', 'admin18@annaya.test', 'Admin18Pass!', '981100018', 'restaurant_admin', 'light', JSON_ARRAY('Mexican'), 'active', 0),
+(21, 'Owner 19', 'admin19@annaya.test', 'Admin19Pass!', '981100019', 'restaurant_admin', 'light', JSON_ARRAY('Cafe'), 'active', 0),
+(22, 'Owner 20', 'admin20@annaya.test', 'Admin20Pass!', '981100020', 'restaurant_admin', 'light', JSON_ARRAY('Seafood'), 'active', 0),
+(23, 'Prayush Mulmi', 'customer1@annaya.test', 'Customer1Pass!', '984200001', 'customer', 'light', JSON_ARRAY('Nepali','Momo','Fast Food'), 'active', 0),
+(24, 'Aarav Shrestha', 'customer2@annaya.test', 'Customer2Pass!', '984200002', 'customer', 'light', JSON_ARRAY('Indian','Cafe'), 'active', 0),
+(25, 'Anita Karki', 'customer3@annaya.test', 'Customer3Pass!', '984200003', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(26, 'Suman Rai', 'customer4@annaya.test', 'Customer4Pass!', '984200004', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(27, 'Riya Gurung', 'customer5@annaya.test', 'Customer5Pass!', '984200005', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(28, 'Bikash Tamang', 'customer6@annaya.test', 'Customer6Pass!', '984200006', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(29, 'Sanjana KC', 'customer7@annaya.test', 'Customer7Pass!', '984200007', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(30, 'Nischal Thapa', 'customer8@annaya.test', 'Customer8Pass!', '984200008', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(31, 'Pooja Lama', 'customer9@annaya.test', 'Customer9Pass!', '984200009', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(32, 'Rohan Basnet', 'customer10@annaya.test', 'Customer10Pass!', '984200010', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(33, 'Sapana Bhandari', 'customer11@annaya.test', 'Customer11Pass!', '984200011', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(34, 'Alisha Poudel', 'customer12@annaya.test', 'Customer12Pass!', '984200012', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(35, 'Kiran Magar', 'customer13@annaya.test', 'Customer13Pass!', '984200013', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(36, 'Nima Sherpa', 'customer14@annaya.test', 'Customer14Pass!', '984200014', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(37, 'Sujan Chaudhary', 'customer15@annaya.test', 'Customer15Pass!', '984200015', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(38, 'Asmita Oli', 'customer16@annaya.test', 'Customer16Pass!', '984200016', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(39, 'Nabin Adhikari', 'customer17@annaya.test', 'Customer17Pass!', '984200017', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(40, 'Bibek Joshi', 'customer18@annaya.test', 'Customer18Pass!', '984200018', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(41, 'Kripa Maharjan', 'customer19@annaya.test', 'Customer19Pass!', '984200019', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0),
+(42, 'Roshan Acharya', 'customer20@annaya.test', 'Customer20Pass!', '984200020', 'customer', 'light', JSON_ARRAY('Healthy','Italian'), 'active', 0);
 
-INSERT INTO users (full_name, email, password, role, status)
-VALUES (
-  'Super Admin',
-  'superadmin@example.com',
-  '$2a$10$KIXIDT1V3x9P5M1Y7qK5Lu5gD6Gx8yPyBvR5s5xyPjdvVSxGInxBq',
-  'super_admin',
-  'active'
-)
-ON DUPLICATE KEY UPDATE email = email;
+INSERT INTO restaurants (id, owner_user_id, name, description, cuisine, address, contact_phone, image_url, cover_photo_url, gallery_images, price_level, rating_average, is_open, status) VALUES
+(1, 3, 'Annaya Kitchen', 'Annaya Kitchen serves fresh multi cuisine food with quick delivery across Kathmandu.', 'Multi Cuisine', 'Kathmandu', '981110001', NULL, NULL, JSON_ARRAY(), '$$', 4.25, 1, 'active'),
+(2, 4, 'Himalayan Spice Hub', 'Himalayan Spice Hub serves fresh indian food with quick delivery across Lalitpur.', 'Indian', 'Lalitpur', '981110002', NULL, NULL, JSON_ARRAY(), '$$', 4.4, 1, 'active'),
+(3, 5, 'Momo Junction', 'Momo Junction serves fresh nepali food with quick delivery across Bhaktapur.', 'Nepali', 'Bhaktapur', '981110003', NULL, NULL, JSON_ARRAY(), '$', 4.55, 1, 'active'),
+(4, 6, 'Pasta House Nepal', 'Pasta House Nepal serves fresh italian food with quick delivery across Kathmandu.', 'Italian', 'Kathmandu', '981110004', NULL, NULL, JSON_ARRAY(), '$$$', 4.7, 1, 'active'),
+(5, 7, 'Sakura Bowl', 'Sakura Bowl serves fresh japanese food with quick delivery across Lalitpur.', 'Japanese', 'Lalitpur', '981110005', NULL, NULL, JSON_ARRAY(), '$$$', 4.1, 1, 'active'),
+(6, 8, 'Dragon Wok', 'Dragon Wok serves fresh chinese food with quick delivery across Kathmandu.', 'Chinese', 'Kathmandu', '981110006', NULL, NULL, JSON_ARRAY(), '$$', 4.25, 1, 'active'),
+(7, 9, 'Biryani Street', 'Biryani Street serves fresh indian food with quick delivery across Bhaktapur.', 'Indian', 'Bhaktapur', '981110007', NULL, NULL, JSON_ARRAY(), '$$', 4.4, 1, 'active'),
+(8, 10, 'Fresh Greens Cafe', 'Fresh Greens Cafe serves fresh healthy food with quick delivery across Kathmandu.', 'Healthy', 'Kathmandu', '981110008', NULL, NULL, JSON_ARRAY(), '$$', 4.55, 1, 'active'),
+(9, 11, 'Burger Barn KTM', 'Burger Barn KTM serves fresh fast food food with quick delivery across Lalitpur.', 'Fast Food', 'Lalitpur', '981110009', NULL, NULL, JSON_ARRAY(), '$', 4.7, 1, 'active'),
+(10, 12, 'Tandoori Flame', 'Tandoori Flame serves fresh indian food with quick delivery across Kathmandu.', 'Indian', 'Kathmandu', '981110010', NULL, NULL, JSON_ARRAY(), '$$$', 4.1, 1, 'active'),
+(11, 13, 'Pho Valley', 'Pho Valley serves fresh vietnamese food with quick delivery across Lalitpur.', 'Vietnamese', 'Lalitpur', '981110011', NULL, NULL, JSON_ARRAY(), '$$', 4.25, 1, 'active'),
+(12, 14, 'Wrap Station', 'Wrap Station serves fresh mediterranean food with quick delivery across Bhaktapur.', 'Mediterranean', 'Bhaktapur', '981110012', NULL, NULL, JSON_ARRAY(), '$', 4.4, 1, 'active'),
+(13, 15, 'Pizza Peak', 'Pizza Peak serves fresh italian food with quick delivery across Kathmandu.', 'Italian', 'Kathmandu', '981110013', NULL, NULL, JSON_ARRAY(), '$$', 4.55, 1, 'active'),
+(14, 16, 'Sekuwa Stories', 'Sekuwa Stories serves fresh nepali food with quick delivery across Lalitpur.', 'Nepali', 'Lalitpur', '981110014', NULL, NULL, JSON_ARRAY(), '$$', 4.7, 1, 'active'),
+(15, 17, 'Kebab Corner', 'Kebab Corner serves fresh middle eastern food with quick delivery across Kathmandu.', 'Middle Eastern', 'Kathmandu', '981110015', NULL, NULL, JSON_ARRAY(), '$$', 4.1, 1, 'active'),
+(16, 18, 'Ramen Room', 'Ramen Room serves fresh japanese food with quick delivery across Bhaktapur.', 'Japanese', 'Bhaktapur', '981110016', NULL, NULL, JSON_ARRAY(), '$$$', 4.25, 1, 'active'),
+(17, 19, 'Thakali Bhansa', 'Thakali Bhansa serves fresh nepali food with quick delivery across Kathmandu.', 'Nepali', 'Kathmandu', '981110017', NULL, NULL, JSON_ARRAY(), '$$', 4.4, 1, 'active'),
+(18, 20, 'Taco Tales', 'Taco Tales serves fresh mexican food with quick delivery across Lalitpur.', 'Mexican', 'Lalitpur', '981110018', NULL, NULL, JSON_ARRAY(), '$$', 4.55, 1, 'active'),
+(19, 21, 'Coffee Crumb', 'Coffee Crumb serves fresh cafe food with quick delivery across Kathmandu.', 'Cafe', 'Kathmandu', '981110019', NULL, NULL, JSON_ARRAY(), '$', 4.7, 1, 'active'),
+(20, 22, 'Ocean Grill', 'Ocean Grill serves fresh seafood food with quick delivery across Bhaktapur.', 'Seafood', 'Bhaktapur', '981110020', NULL, NULL, JSON_ARRAY(), '$$$', 4.1, 1, 'active');
 
-INSERT INTO users (full_name, email, password, phone, role, status)
-SELECT 'Rudra Cafe Admin', 'restaurantadmin@example.com', '$2a$10$KIXIDT1V3x9P5M1Y7qK5Lu5gD6Gx8yPyBvR5s5xyPjdvVSxGInxBq', '9800000001', 'restaurant_admin', 'active'
-WHERE NOT EXISTS (
-  SELECT 1 FROM users WHERE email = 'restaurantadmin@example.com'
+INSERT INTO menu_items (id, restaurant_id, category, name, description, price, image_url, is_available) VALUES
+(1, 1, 'Popular', 'Chicken Burger', 'Chicken Burger from Annaya Kitchen', 299.00, NULL, 1),
+(2, 1, 'Pizza', 'Margherita Pizza', 'Margherita Pizza from Annaya Kitchen', 499.00, NULL, 1),
+(3, 1, 'Dessert', 'Brownie Sundae', 'Brownie Sundae from Annaya Kitchen', 220.00, NULL, 1),
+(4, 2, 'Popular', 'Butter Chicken', 'Butter Chicken from Himalayan Spice Hub', 480.00, NULL, 1),
+(5, 2, 'Main Course', 'Paneer Tikka Masala', 'Paneer Tikka Masala from Himalayan Spice Hub', 430.00, NULL, 1),
+(6, 2, 'Bread', 'Garlic Naan', 'Garlic Naan from Himalayan Spice Hub', 110.00, NULL, 1),
+(7, 3, 'Popular', 'Buff Momo', 'Buff Momo from Momo Junction', 180.00, NULL, 1),
+(8, 3, 'Main Course', 'Thakali Set', 'Thakali Set from Momo Junction', 420.00, NULL, 1),
+(9, 3, 'Snacks', 'Chicken Chowmein', 'Chicken Chowmein from Momo Junction', 240.00, NULL, 1),
+(10, 4, 'Popular', 'Margherita Pizza', 'Margherita Pizza from Pasta House Nepal', 520.00, NULL, 1),
+(11, 4, 'Pasta', 'Chicken Alfredo Pasta', 'Chicken Alfredo Pasta from Pasta House Nepal', 460.00, NULL, 1),
+(12, 4, 'Sides', 'Garlic Bread', 'Garlic Bread from Pasta House Nepal', 160.00, NULL, 1),
+(13, 5, 'Popular', 'Chicken Teriyaki Bowl', 'Chicken Teriyaki Bowl from Sakura Bowl', 540.00, NULL, 1),
+(14, 5, 'Soup', 'Tonkotsu Ramen', 'Tonkotsu Ramen from Sakura Bowl', 620.00, NULL, 1),
+(15, 5, 'Sides', 'California Roll', 'California Roll from Sakura Bowl', 450.00, NULL, 1),
+(16, 6, 'Popular', 'Chicken Fried Rice', 'Chicken Fried Rice from Dragon Wok', 300.00, NULL, 1),
+(17, 6, 'Main Course', 'Kung Pao Chicken', 'Kung Pao Chicken from Dragon Wok', 390.00, NULL, 1),
+(18, 6, 'Snacks', 'Veg Spring Roll', 'Veg Spring Roll from Dragon Wok', 190.00, NULL, 1),
+(19, 7, 'Popular', 'Butter Chicken', 'Butter Chicken from Biryani Street', 480.00, NULL, 1),
+(20, 7, 'Main Course', 'Paneer Tikka Masala', 'Paneer Tikka Masala from Biryani Street', 430.00, NULL, 1),
+(21, 7, 'Bread', 'Garlic Naan', 'Garlic Naan from Biryani Street', 110.00, NULL, 1),
+(22, 8, 'Popular', 'Grilled Chicken Salad', 'Grilled Chicken Salad from Fresh Greens Cafe', 380.00, NULL, 1),
+(23, 8, 'Bowls', 'Quinoa Veg Bowl', 'Quinoa Veg Bowl from Fresh Greens Cafe', 360.00, NULL, 1),
+(24, 8, 'Drinks', 'Green Smoothie', 'Green Smoothie from Fresh Greens Cafe', 210.00, NULL, 1),
+(25, 9, 'Popular', 'Chicken Burger', 'Chicken Burger from Burger Barn KTM', 280.00, NULL, 1),
+(26, 9, 'Sides', 'Loaded Fries', 'Loaded Fries from Burger Barn KTM', 190.00, NULL, 1),
+(27, 9, 'Drinks', 'Cold Coffee', 'Cold Coffee from Burger Barn KTM', 160.00, NULL, 1),
+(28, 10, 'Popular', 'Butter Chicken', 'Butter Chicken from Tandoori Flame', 480.00, NULL, 1),
+(29, 10, 'Main Course', 'Paneer Tikka Masala', 'Paneer Tikka Masala from Tandoori Flame', 430.00, NULL, 1),
+(30, 10, 'Bread', 'Garlic Naan', 'Garlic Naan from Tandoori Flame', 110.00, NULL, 1),
+(31, 11, 'Popular', 'Beef Pho', 'Beef Pho from Pho Valley', 440.00, NULL, 1),
+(32, 11, 'Rolls', 'Fresh Spring Rolls', 'Fresh Spring Rolls from Pho Valley', 240.00, NULL, 1),
+(33, 11, 'Rice', 'Lemongrass Chicken Rice', 'Lemongrass Chicken Rice from Pho Valley', 390.00, NULL, 1),
+(34, 12, 'Popular', 'Chicken Shawarma Wrap', 'Chicken Shawarma Wrap from Wrap Station', 290.00, NULL, 1),
+(35, 12, 'Platter', 'Falafel Plate', 'Falafel Plate from Wrap Station', 340.00, NULL, 1),
+(36, 12, 'Sides', 'Hummus with Pita', 'Hummus with Pita from Wrap Station', 220.00, NULL, 1),
+(37, 13, 'Popular', 'Margherita Pizza', 'Margherita Pizza from Pizza Peak', 520.00, NULL, 1),
+(38, 13, 'Pasta', 'Chicken Alfredo Pasta', 'Chicken Alfredo Pasta from Pizza Peak', 460.00, NULL, 1),
+(39, 13, 'Sides', 'Garlic Bread', 'Garlic Bread from Pizza Peak', 160.00, NULL, 1),
+(40, 14, 'Popular', 'Buff Momo', 'Buff Momo from Sekuwa Stories', 180.00, NULL, 1),
+(41, 14, 'Main Course', 'Thakali Set', 'Thakali Set from Sekuwa Stories', 420.00, NULL, 1),
+(42, 14, 'Snacks', 'Chicken Chowmein', 'Chicken Chowmein from Sekuwa Stories', 240.00, NULL, 1),
+(43, 15, 'Popular', 'Chicken Kebab Plate', 'Chicken Kebab Plate from Kebab Corner', 410.00, NULL, 1),
+(44, 15, 'Wraps', 'Lamb Shawarma', 'Lamb Shawarma from Kebab Corner', 390.00, NULL, 1),
+(45, 15, 'Sides', 'Pita & Dip', 'Pita & Dip from Kebab Corner', 180.00, NULL, 1),
+(46, 16, 'Popular', 'Chicken Teriyaki Bowl', 'Chicken Teriyaki Bowl from Ramen Room', 540.00, NULL, 1),
+(47, 16, 'Soup', 'Tonkotsu Ramen', 'Tonkotsu Ramen from Ramen Room', 620.00, NULL, 1),
+(48, 16, 'Sides', 'California Roll', 'California Roll from Ramen Room', 450.00, NULL, 1),
+(49, 17, 'Popular', 'Buff Momo', 'Buff Momo from Thakali Bhansa', 180.00, NULL, 1),
+(50, 17, 'Main Course', 'Thakali Set', 'Thakali Set from Thakali Bhansa', 420.00, NULL, 1),
+(51, 17, 'Snacks', 'Chicken Chowmein', 'Chicken Chowmein from Thakali Bhansa', 240.00, NULL, 1),
+(52, 18, 'Popular', 'Chicken Taco', 'Chicken Taco from Taco Tales', 220.00, NULL, 1),
+(53, 18, 'Burrito', 'Beef Burrito Bowl', 'Beef Burrito Bowl from Taco Tales', 430.00, NULL, 1),
+(54, 18, 'Sides', 'Nachos', 'Nachos from Taco Tales', 260.00, NULL, 1),
+(55, 19, 'Popular', 'Cappuccino', 'Cappuccino from Coffee Crumb', 170.00, NULL, 1),
+(56, 19, 'Bakery', 'Blueberry Muffin', 'Blueberry Muffin from Coffee Crumb', 140.00, NULL, 1),
+(57, 19, 'Dessert', 'Chocolate Cake Slice', 'Chocolate Cake Slice from Coffee Crumb', 210.00, NULL, 1),
+(58, 20, 'Popular', 'Grilled Fish Platter', 'Grilled Fish Platter from Ocean Grill', 690.00, NULL, 1),
+(59, 20, 'Main Course', 'Garlic Butter Prawns', 'Garlic Butter Prawns from Ocean Grill', 720.00, NULL, 1),
+(60, 20, 'Rice', 'Seafood Rice Bowl', 'Seafood Rice Bowl from Ocean Grill', 560.00, NULL, 1);
+
+INSERT INTO coupons (id, restaurant_id, code, discount_type, discount_value, min_order_amount, start_date, end_date, usage_limit, used_count, status) VALUES
+(1, 1, 'SAVE01', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 1, 'active'),
+(2, 2, 'SAVE02', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 2, 'active'),
+(3, 3, 'SAVE03', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 3, 'active'),
+(4, 4, 'SAVE04', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 0, 'active'),
+(5, 5, 'SAVE05', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 1, 'active'),
+(6, 6, 'SAVE06', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 2, 'active'),
+(7, 7, 'SAVE07', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 3, 'active'),
+(8, 8, 'SAVE08', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 0, 'active'),
+(9, 9, 'SAVE09', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 1, 'active'),
+(10, 10, 'SAVE10', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 2, 'active'),
+(11, 11, 'SAVE11', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 3, 'active'),
+(12, 12, 'SAVE12', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 0, 'active'),
+(13, 13, 'SAVE13', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 1, 'active'),
+(14, 14, 'SAVE14', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 2, 'active'),
+(15, 15, 'SAVE15', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 3, 'active'),
+(16, 16, 'SAVE16', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 0, 'active'),
+(17, 17, 'SAVE17', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 1, 'active'),
+(18, 18, 'SAVE18', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 2, 'active'),
+(19, 19, 'SAVE19', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 3, 'active'),
+(20, 20, 'SAVE20', 'percentage', 10.00, 300.00, '2026-01-01', '2026-12-31', NULL, 0, 'active');
+
+INSERT INTO baskets (id, user_id, restaurant_id) VALUES
+(1, 23, NULL),
+(2, 24, NULL),
+(3, 25, NULL),
+(4, 26, NULL),
+(5, 27, NULL),
+(6, 28, NULL),
+(7, 29, NULL),
+(8, 30, NULL),
+(9, 31, NULL),
+(10, 32, NULL),
+(11, 33, NULL),
+(12, 34, NULL),
+(13, 35, NULL),
+(14, 36, NULL),
+(15, 37, NULL),
+(16, 38, NULL),
+(17, 39, NULL),
+(18, 40, NULL),
+(19, 41, NULL),
+(20, 42, NULL);
+
+INSERT INTO orders (id, order_code, user_id, restaurant_id, basket_id, coupon_id, subtotal, discount_amount, delivery_fee, final_total, delivery_address, notes, status, created_at) VALUES
+(1, 'ANN-1001', 23, 1, NULL, 1, 798.00, 79.80, 50.00, 768.20, 'Ward 1, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-01 12:00:00'),
+(2, 'ANN-1002', 24, 2, NULL, 2, 910.00, 91.00, 50.00, 869.00, 'Ward 2, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-02 12:00:00'),
+(3, 'ANN-1003', 25, 3, NULL, 3, 600.00, 60.00, 50.00, 590.00, 'Ward 3, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-03 12:00:00'),
+(4, 'ANN-1004', 26, 4, NULL, 4, 980.00, 98.00, 50.00, 932.00, 'Ward 4, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-04 12:00:00'),
+(5, 'ANN-1005', 27, 5, NULL, 5, 1160.00, 116.00, 50.00, 1094.00, 'Ward 5, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-05 12:00:00'),
+(6, 'ANN-1006', 28, 6, NULL, 6, 690.00, 69.00, 50.00, 671.00, 'Ward 6, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-06 12:00:00'),
+(7, 'ANN-1007', 29, 7, NULL, 7, 910.00, 91.00, 50.00, 869.00, 'Ward 7, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-07 12:00:00'),
+(8, 'ANN-1008', 30, 8, NULL, 8, 740.00, 74.00, 50.00, 716.00, 'Ward 8, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-08 12:00:00'),
+(9, 'ANN-1009', 31, 9, NULL, 9, 470.00, 47.00, 50.00, 473.00, 'Ward 9, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-09 12:00:00'),
+(10, 'ANN-1010', 32, 10, NULL, 10, 910.00, 91.00, 50.00, 869.00, 'Ward 10, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-10 12:00:00'),
+(11, 'ANN-1011', 33, 11, NULL, 11, 680.00, 68.00, 50.00, 662.00, 'Ward 11, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-11 12:00:00'),
+(12, 'ANN-1012', 34, 12, NULL, 12, 630.00, 63.00, 50.00, 617.00, 'Ward 12, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-12 12:00:00'),
+(13, 'ANN-1013', 35, 13, NULL, 13, 980.00, 98.00, 50.00, 932.00, 'Ward 13, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-13 12:00:00'),
+(14, 'ANN-1014', 36, 14, NULL, 14, 600.00, 60.00, 50.00, 590.00, 'Ward 14, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-14 12:00:00'),
+(15, 'ANN-1015', 37, 15, NULL, 15, 800.00, 80.00, 50.00, 770.00, 'Ward 15, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-15 12:00:00'),
+(16, 'ANN-1016', 38, 16, NULL, 16, 1160.00, 116.00, 50.00, 1094.00, 'Ward 16, Kathmandu', 'Please call on arrival', 'Delivered', '2026-03-16 12:00:00'),
+(17, 'ANN-1017', 39, 17, NULL, 17, 600.00, 60.00, 50.00, 590.00, 'Ward 17, Kathmandu', 'Please call on arrival', 'Pending', '2026-03-17 12:00:00'),
+(18, 'ANN-1018', 40, 18, NULL, 18, 650.00, 65.00, 50.00, 635.00, 'Ward 18, Kathmandu', 'Please call on arrival', 'Confirmed', '2026-03-18 12:00:00'),
+(19, 'ANN-1019', 41, 19, NULL, 19, 310.00, 31.00, 50.00, 329.00, 'Ward 19, Kathmandu', 'Please call on arrival', 'Preparing', '2026-03-19 12:00:00'),
+(20, 'ANN-1020', 42, 20, NULL, 20, 1410.00, 141.00, 50.00, 1319.00, 'Ward 20, Kathmandu', 'Please call on arrival', 'Out for Delivery', '2026-03-20 12:00:00');
+
+INSERT INTO order_items (id, order_id, menu_item_id, item_name, quantity, unit_price, total_price) VALUES
+(1, 1, 1, 'Chicken Burger', 1, 299.00, 299.00),
+(2, 1, 2, 'Margherita Pizza', 1, 499.00, 499.00),
+(3, 2, 4, 'Butter Chicken', 1, 480.00, 480.00),
+(4, 2, 5, 'Paneer Tikka Masala', 1, 430.00, 430.00),
+(5, 3, 7, 'Buff Momo', 1, 180.00, 180.00),
+(6, 3, 8, 'Thakali Set', 1, 420.00, 420.00),
+(7, 4, 10, 'Margherita Pizza', 1, 520.00, 520.00),
+(8, 4, 11, 'Chicken Alfredo Pasta', 1, 460.00, 460.00),
+(9, 5, 13, 'Chicken Teriyaki Bowl', 1, 540.00, 540.00),
+(10, 5, 14, 'Tonkotsu Ramen', 1, 620.00, 620.00),
+(11, 6, 16, 'Chicken Fried Rice', 1, 300.00, 300.00),
+(12, 6, 17, 'Kung Pao Chicken', 1, 390.00, 390.00),
+(13, 7, 19, 'Butter Chicken', 1, 480.00, 480.00),
+(14, 7, 20, 'Paneer Tikka Masala', 1, 430.00, 430.00),
+(15, 8, 22, 'Grilled Chicken Salad', 1, 380.00, 380.00),
+(16, 8, 23, 'Quinoa Veg Bowl', 1, 360.00, 360.00),
+(17, 9, 25, 'Chicken Burger', 1, 280.00, 280.00),
+(18, 9, 26, 'Loaded Fries', 1, 190.00, 190.00),
+(19, 10, 28, 'Butter Chicken', 1, 480.00, 480.00),
+(20, 10, 29, 'Paneer Tikka Masala', 1, 430.00, 430.00),
+(21, 11, 31, 'Beef Pho', 1, 440.00, 440.00),
+(22, 11, 32, 'Fresh Spring Rolls', 1, 240.00, 240.00),
+(23, 12, 34, 'Chicken Shawarma Wrap', 1, 290.00, 290.00),
+(24, 12, 35, 'Falafel Plate', 1, 340.00, 340.00),
+(25, 13, 37, 'Margherita Pizza', 1, 520.00, 520.00),
+(26, 13, 38, 'Chicken Alfredo Pasta', 1, 460.00, 460.00),
+(27, 14, 40, 'Buff Momo', 1, 180.00, 180.00),
+(28, 14, 41, 'Thakali Set', 1, 420.00, 420.00),
+(29, 15, 43, 'Chicken Kebab Plate', 1, 410.00, 410.00),
+(30, 15, 44, 'Lamb Shawarma', 1, 390.00, 390.00),
+(31, 16, 46, 'Chicken Teriyaki Bowl', 1, 540.00, 540.00),
+(32, 16, 47, 'Tonkotsu Ramen', 1, 620.00, 620.00),
+(33, 17, 49, 'Buff Momo', 1, 180.00, 180.00),
+(34, 17, 50, 'Thakali Set', 1, 420.00, 420.00),
+(35, 18, 52, 'Chicken Taco', 1, 220.00, 220.00),
+(36, 18, 53, 'Beef Burrito Bowl', 1, 430.00, 430.00),
+(37, 19, 55, 'Cappuccino', 1, 170.00, 170.00),
+(38, 19, 56, 'Blueberry Muffin', 1, 140.00, 140.00),
+(39, 20, 58, 'Grilled Fish Platter', 1, 690.00, 690.00),
+(40, 20, 59, 'Garlic Butter Prawns', 1, 720.00, 720.00);
+
+INSERT INTO order_status_logs (id, order_id, status, changed_by_user_id, note, created_at) VALUES
+(1, 1, 'Pending', 23, 'Customer placed order', '2026-03-01 12:00:00'),
+(2, 1, 'Confirmed', 3, 'Restaurant updated status', '2026-03-01 13:00:00'),
+(3, 1, 'Preparing', 3, 'Restaurant updated status', '2026-03-01 14:00:00'),
+(4, 1, 'Out for Delivery', 3, 'Restaurant updated status', '2026-03-01 15:00:00'),
+(5, 1, 'Delivered', 3, 'Restaurant updated status', '2026-03-01 16:00:00'),
+(6, 2, 'Pending', 24, 'Customer placed order', '2026-03-02 12:00:00'),
+(7, 2, 'Confirmed', 4, 'Restaurant updated status', '2026-03-02 13:00:00'),
+(8, 2, 'Preparing', 4, 'Restaurant updated status', '2026-03-02 14:00:00'),
+(9, 2, 'Out for Delivery', 4, 'Restaurant updated status', '2026-03-02 15:00:00'),
+(10, 2, 'Delivered', 4, 'Restaurant updated status', '2026-03-02 16:00:00'),
+(11, 3, 'Pending', 25, 'Customer placed order', '2026-03-03 12:00:00'),
+(12, 3, 'Confirmed', 5, 'Restaurant updated status', '2026-03-03 13:00:00'),
+(13, 3, 'Preparing', 5, 'Restaurant updated status', '2026-03-03 14:00:00'),
+(14, 3, 'Out for Delivery', 5, 'Restaurant updated status', '2026-03-03 15:00:00'),
+(15, 3, 'Delivered', 5, 'Restaurant updated status', '2026-03-03 16:00:00'),
+(16, 4, 'Pending', 26, 'Customer placed order', '2026-03-04 12:00:00'),
+(17, 4, 'Confirmed', 6, 'Restaurant updated status', '2026-03-04 13:00:00'),
+(18, 4, 'Preparing', 6, 'Restaurant updated status', '2026-03-04 14:00:00'),
+(19, 4, 'Out for Delivery', 6, 'Restaurant updated status', '2026-03-04 15:00:00'),
+(20, 4, 'Delivered', 6, 'Restaurant updated status', '2026-03-04 16:00:00'),
+(21, 5, 'Pending', 27, 'Customer placed order', '2026-03-05 12:00:00'),
+(22, 5, 'Confirmed', 7, 'Restaurant updated status', '2026-03-05 13:00:00'),
+(23, 5, 'Preparing', 7, 'Restaurant updated status', '2026-03-05 14:00:00'),
+(24, 5, 'Out for Delivery', 7, 'Restaurant updated status', '2026-03-05 15:00:00'),
+(25, 5, 'Delivered', 7, 'Restaurant updated status', '2026-03-05 16:00:00'),
+(26, 6, 'Pending', 28, 'Customer placed order', '2026-03-06 12:00:00'),
+(27, 6, 'Confirmed', 8, 'Restaurant updated status', '2026-03-06 13:00:00'),
+(28, 6, 'Preparing', 8, 'Restaurant updated status', '2026-03-06 14:00:00'),
+(29, 6, 'Out for Delivery', 8, 'Restaurant updated status', '2026-03-06 15:00:00'),
+(30, 6, 'Delivered', 8, 'Restaurant updated status', '2026-03-06 16:00:00'),
+(31, 7, 'Pending', 29, 'Customer placed order', '2026-03-07 12:00:00'),
+(32, 7, 'Confirmed', 9, 'Restaurant updated status', '2026-03-07 13:00:00'),
+(33, 7, 'Preparing', 9, 'Restaurant updated status', '2026-03-07 14:00:00'),
+(34, 7, 'Out for Delivery', 9, 'Restaurant updated status', '2026-03-07 15:00:00'),
+(35, 7, 'Delivered', 9, 'Restaurant updated status', '2026-03-07 16:00:00'),
+(36, 8, 'Pending', 30, 'Customer placed order', '2026-03-08 12:00:00'),
+(37, 8, 'Confirmed', 10, 'Restaurant updated status', '2026-03-08 13:00:00'),
+(38, 8, 'Preparing', 10, 'Restaurant updated status', '2026-03-08 14:00:00'),
+(39, 8, 'Out for Delivery', 10, 'Restaurant updated status', '2026-03-08 15:00:00'),
+(40, 8, 'Delivered', 10, 'Restaurant updated status', '2026-03-08 16:00:00'),
+(41, 9, 'Pending', 31, 'Customer placed order', '2026-03-09 12:00:00'),
+(42, 9, 'Confirmed', 11, 'Restaurant updated status', '2026-03-09 13:00:00'),
+(43, 9, 'Preparing', 11, 'Restaurant updated status', '2026-03-09 14:00:00'),
+(44, 9, 'Out for Delivery', 11, 'Restaurant updated status', '2026-03-09 15:00:00'),
+(45, 9, 'Delivered', 11, 'Restaurant updated status', '2026-03-09 16:00:00'),
+(46, 10, 'Pending', 32, 'Customer placed order', '2026-03-10 12:00:00'),
+(47, 10, 'Confirmed', 12, 'Restaurant updated status', '2026-03-10 13:00:00'),
+(48, 10, 'Preparing', 12, 'Restaurant updated status', '2026-03-10 14:00:00'),
+(49, 10, 'Out for Delivery', 12, 'Restaurant updated status', '2026-03-10 15:00:00'),
+(50, 10, 'Delivered', 12, 'Restaurant updated status', '2026-03-10 16:00:00'),
+(51, 11, 'Pending', 33, 'Customer placed order', '2026-03-11 12:00:00'),
+(52, 11, 'Confirmed', 13, 'Restaurant updated status', '2026-03-11 13:00:00'),
+(53, 11, 'Preparing', 13, 'Restaurant updated status', '2026-03-11 14:00:00'),
+(54, 11, 'Out for Delivery', 13, 'Restaurant updated status', '2026-03-11 15:00:00'),
+(55, 11, 'Delivered', 13, 'Restaurant updated status', '2026-03-11 16:00:00'),
+(56, 12, 'Pending', 34, 'Customer placed order', '2026-03-12 12:00:00'),
+(57, 12, 'Confirmed', 14, 'Restaurant updated status', '2026-03-12 13:00:00'),
+(58, 12, 'Preparing', 14, 'Restaurant updated status', '2026-03-12 14:00:00'),
+(59, 12, 'Out for Delivery', 14, 'Restaurant updated status', '2026-03-12 15:00:00'),
+(60, 12, 'Delivered', 14, 'Restaurant updated status', '2026-03-12 16:00:00'),
+(61, 13, 'Pending', 35, 'Customer placed order', '2026-03-13 12:00:00'),
+(62, 13, 'Confirmed', 15, 'Restaurant updated status', '2026-03-13 13:00:00'),
+(63, 13, 'Preparing', 15, 'Restaurant updated status', '2026-03-13 14:00:00'),
+(64, 13, 'Out for Delivery', 15, 'Restaurant updated status', '2026-03-13 15:00:00'),
+(65, 13, 'Delivered', 15, 'Restaurant updated status', '2026-03-13 16:00:00'),
+(66, 14, 'Pending', 36, 'Customer placed order', '2026-03-14 12:00:00'),
+(67, 14, 'Confirmed', 16, 'Restaurant updated status', '2026-03-14 13:00:00'),
+(68, 14, 'Preparing', 16, 'Restaurant updated status', '2026-03-14 14:00:00'),
+(69, 14, 'Out for Delivery', 16, 'Restaurant updated status', '2026-03-14 15:00:00'),
+(70, 14, 'Delivered', 16, 'Restaurant updated status', '2026-03-14 16:00:00'),
+(71, 15, 'Pending', 37, 'Customer placed order', '2026-03-15 12:00:00'),
+(72, 15, 'Confirmed', 17, 'Restaurant updated status', '2026-03-15 13:00:00'),
+(73, 15, 'Preparing', 17, 'Restaurant updated status', '2026-03-15 14:00:00'),
+(74, 15, 'Out for Delivery', 17, 'Restaurant updated status', '2026-03-15 15:00:00'),
+(75, 15, 'Delivered', 17, 'Restaurant updated status', '2026-03-15 16:00:00'),
+(76, 16, 'Pending', 38, 'Customer placed order', '2026-03-16 12:00:00'),
+(77, 16, 'Confirmed', 18, 'Restaurant updated status', '2026-03-16 13:00:00'),
+(78, 16, 'Preparing', 18, 'Restaurant updated status', '2026-03-16 14:00:00'),
+(79, 16, 'Out for Delivery', 18, 'Restaurant updated status', '2026-03-16 15:00:00'),
+(80, 16, 'Delivered', 18, 'Restaurant updated status', '2026-03-16 16:00:00'),
+(81, 17, 'Pending', 39, 'Customer placed order', '2026-03-17 12:00:00'),
+(82, 18, 'Pending', 40, 'Customer placed order', '2026-03-18 12:00:00'),
+(83, 18, 'Confirmed', 20, 'Restaurant updated status', '2026-03-18 13:00:00'),
+(84, 19, 'Pending', 41, 'Customer placed order', '2026-03-19 12:00:00'),
+(85, 19, 'Confirmed', 21, 'Restaurant updated status', '2026-03-19 13:00:00'),
+(86, 19, 'Preparing', 21, 'Restaurant updated status', '2026-03-19 14:00:00'),
+(87, 20, 'Pending', 42, 'Customer placed order', '2026-03-20 12:00:00'),
+(88, 20, 'Confirmed', 22, 'Restaurant updated status', '2026-03-20 13:00:00'),
+(89, 20, 'Preparing', 22, 'Restaurant updated status', '2026-03-20 14:00:00'),
+(90, 20, 'Out for Delivery', 22, 'Restaurant updated status', '2026-03-20 15:00:00');
+
+INSERT INTO reviews (id, order_id, user_id, restaurant_id, menu_item_id, rating, comment, created_at) VALUES
+(1, 1, 23, 1, 1, 5, 'Great food and smooth delivery from Annaya Kitchen.', '2026-03-01 18:00:00'),
+(2, 2, 24, 2, 4, 4, 'Great food and smooth delivery from Himalayan Spice Hub.', '2026-03-02 18:00:00'),
+(3, 3, 25, 3, 7, 5, 'Great food and smooth delivery from Momo Junction.', '2026-03-03 18:00:00'),
+(4, 4, 26, 4, 10, 4, 'Great food and smooth delivery from Pasta House Nepal.', '2026-03-04 18:00:00'),
+(5, 5, 27, 5, 13, 5, 'Great food and smooth delivery from Sakura Bowl.', '2026-03-05 18:00:00'),
+(6, 6, 28, 6, 16, 5, 'Great food and smooth delivery from Dragon Wok.', '2026-03-06 18:00:00'),
+(7, 7, 29, 7, 19, 5, 'Great food and smooth delivery from Biryani Street.', '2026-03-07 18:00:00'),
+(8, 8, 30, 8, 22, 4, 'Great food and smooth delivery from Fresh Greens Cafe.', '2026-03-08 18:00:00'),
+(9, 9, 31, 9, 25, 5, 'Great food and smooth delivery from Burger Barn KTM.', '2026-03-09 18:00:00'),
+(10, 10, 32, 10, 28, 4, 'Great food and smooth delivery from Tandoori Flame.', '2026-03-10 18:00:00'),
+(11, 11, 33, 11, 31, 5, 'Great food and smooth delivery from Pho Valley.', '2026-03-11 18:00:00'),
+(12, 12, 34, 12, 34, 5, 'Great food and smooth delivery from Wrap Station.', '2026-03-12 18:00:00'),
+(13, 13, 35, 13, 37, 5, 'Great food and smooth delivery from Pizza Peak.', '2026-03-13 18:00:00'),
+(14, 14, 36, 14, 40, 4, 'Great food and smooth delivery from Sekuwa Stories.', '2026-03-14 18:00:00'),
+(15, 15, 37, 15, 43, 5, 'Great food and smooth delivery from Kebab Corner.', '2026-03-15 18:00:00'),
+(16, 16, 38, 16, 46, 4, 'Great food and smooth delivery from Ramen Room.', '2026-03-16 18:00:00');
+
+UPDATE restaurants r
+SET rating_average = (
+  SELECT IFNULL(AVG(rv.rating), 0)
+  FROM reviews rv
+  WHERE rv.restaurant_id = r.id
 );
 
-INSERT INTO restaurants (owner_user_id, name, description, cuisine, address, contact_phone, image_url, price_level, rating_average, is_open, status)
-SELECT u.id, 'Rudra Cafe', 'Fresh burgers, momo, coffee, and quick meals.', 'Cafe, Fast Food', 'Putalisadak, Kathmandu', '9800000001', 'https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1200&q=80', '$$', 4.60, 1, 'active'
-FROM users u
-WHERE u.email = 'restaurantadmin@example.com'
-  AND NOT EXISTS (SELECT 1 FROM restaurants WHERE name = 'Rudra Cafe');
-
-INSERT INTO menu_items (restaurant_id, category, name, description, price, image_url, is_available)
-SELECT r.id, 'Burger', 'Annaya Special Burger', 'Grilled patty burger with cheese and fresh vegetables.', 443.00, 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1200&q=80', 1
-FROM restaurants r
-WHERE r.name = 'Rudra Cafe'
-  AND NOT EXISTS (SELECT 1 FROM menu_items WHERE name = 'Annaya Special Burger');
-
-INSERT INTO menu_items (restaurant_id, category, name, description, price, image_url, is_available)
-SELECT r.id, 'Momo', 'Chicken Momo', 'Steamed momo served with spicy achar.', 220.00, 'https://images.unsplash.com/photo-1625944525533-473f1c35fdcf?auto=format&fit=crop&w=1200&q=80', 1
-FROM restaurants r
-WHERE r.name = 'Rudra Cafe'
-  AND NOT EXISTS (SELECT 1 FROM menu_items WHERE name = 'Chicken Momo');
-
-INSERT INTO menu_items (restaurant_id, category, name, description, price, image_url, is_available)
-SELECT r.id, 'Beverage', 'Cold Coffee', 'Smooth chilled coffee with ice cream topping.', 180.00, 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?auto=format&fit=crop&w=1200&q=80', 1
-FROM restaurants r
-WHERE r.name = 'Rudra Cafe'
-  AND NOT EXISTS (SELECT 1 FROM menu_items WHERE name = 'Cold Coffee');
+INSERT INTO admin_action_logs (action_by_user_id, target_type, target_id, action_type, reason)
+VALUES
+(1, 'restaurant', 3, 'reviewed_account', 'Initial demo moderation log'),
+(2, 'user', 25, 'checked_profile', 'Initial demo audit log');
