@@ -35,4 +35,3 @@ export const getRestaurantFilters = asyncHandler(async (_req, res) => {
   const filters = await RestaurantModel.listFilterOptions();
   sendResponse(res, 200, "Restaurant filters fetched", filters);
 });
-//
