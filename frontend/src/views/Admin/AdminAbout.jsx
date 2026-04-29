@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { toBase64 } from "../../lib/fileUpload";
 
 export function AdminAbout() {
-  const [form, setForm] = useState({ name: '', cuisine: '', address: '', contact_phone: '', description: '', image_url: '', cover_photo_url: '', gallery_images: [] });
+  const [form, setForm] = useState({ name: '', cuisine: '', address: '', contact_phone: '', description: '', image_url: '', cover_photo_url: '', gallery_images: [], restaurant_location_url: '' });
   const [logoFile, setLogoFile] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
   const [galleryFiles, setGalleryFiles] = useState([]);
@@ -38,6 +38,7 @@ export function AdminAbout() {
         <Input placeholder="Cuisine" value={form.cuisine || ''} onChange={(e) => setForm((p) => ({ ...p, cuisine: e.target.value }))} />
         <Input placeholder="Address" value={form.address || ''} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} />
         <Input placeholder="Contact phone" value={form.contact_phone || ''} onChange={(e) => setForm((p) => ({ ...p, contact_phone: e.target.value }))} />
+        <Input placeholder="Google Maps location URL" value={form.restaurant_location_url || ''} onChange={(e) => setForm((p) => ({ ...p, restaurant_location_url: e.target.value }))} className="md:col-span-2" />
         <Input placeholder="Logo image URL" value={form.image_url || ''} onChange={(e) => setForm((p) => ({ ...p, image_url: e.target.value }))} />
         <Input placeholder="Cover photo URL" value={form.cover_photo_url || ''} onChange={(e) => setForm((p) => ({ ...p, cover_photo_url: e.target.value }))} />
         <div><label className="block text-sm font-medium">Upload logo</label><input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} /></div>
@@ -50,4 +51,3 @@ export function AdminAbout() {
     </div>
   );
 }
-//
