@@ -7,6 +7,7 @@ DROP TABLE IF EXISTS order_items;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS coupons;
 DROP TABLE IF EXISTS basket_items;
+DROP TABLE IF EXISTS user_saved_locations;
 DROP TABLE IF EXISTS baskets;
 DROP TABLE IF EXISTS menu_items;
 DROP TABLE IF EXISTS restaurants;
@@ -56,6 +57,20 @@ CREATE TABLE IF NOT EXISTS menu_items (
   is_available TINYINT(1) DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS user_saved_locations (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  label VARCHAR(100) NOT NULL,
+  location_input TEXT NULL,
+  google_maps_url TEXT NULL,
+  latitude DECIMAL(10,7) NULL,
+  longitude DECIMAL(10,7) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_user_location_label (user_id, label),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS baskets (
@@ -523,3 +538,59 @@ INSERT INTO admin_action_logs (action_by_user_id, target_type, target_id, action
 VALUES
 (1, 'restaurant', 3, 'reviewed_account', 'Initial demo moderation log'),
 (2, 'user', 25, 'checked_profile', 'Initial demo audit log');
+
+ALTER TABLE users MODIFY role ENUM('customer', 'restaurant_admin', 'super_admin', 'rider') NOT NULL DEFAULT 'customer';
+ALTER TABLE restaurants ADD COLUMN restaurant_location_url TEXT NULL;
+ALTER TABLE orders ADD COLUMN assigned_rider_user_id INT NULL;
+ALTER TABLE orders ADD COLUMN delivery_latitude DECIMAL(10,7) NULL;
+ALTER TABLE orders ADD COLUMN delivery_longitude DECIMAL(10,7) NULL;
+ALTER TABLE orders ADD COLUMN rider_current_latitude DECIMAL(10,7) NULL;
+ALTER TABLE orders ADD COLUMN rider_current_longitude DECIMAL(10,7) NULL;
+ALTER TABLE orders ADD COLUMN rider_location_updated_at TIMESTAMP NULL;
+ALTER TABLE orders ADD CONSTRAINT fk_orders_assigned_rider FOREIGN KEY (assigned_rider_user_id) REFERENCES users(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS rider_profiles (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL UNIQUE,
+  availability_status ENUM('available', 'assigned', 'offline') NOT NULL DEFAULT 'available',
+  vehicle_label VARCHAR(100) NULL,
+  current_latitude DECIMAL(10,7) NULL,
+  current_longitude DECIMAL(10,7) NULL,
+  last_active_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS rider_notifications (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  rider_user_id INT NOT NULL,
+  order_id INT NULL,
+  title VARCHAR(150) NOT NULL,
+  message TEXT NOT NULL,
+  is_read TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (rider_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL
+);
+
+INSERT INTO users (id, full_name, email, password, phone, role, theme, food_preferences, status, force_password_change) VALUES
+(43, 'Rider One', 'rider1@annaya.test', 'Rider1Pass!', '9860000043', 'rider', 'light', JSON_ARRAY('On-Time'), 'active', 0),
+(44, 'Rider Two', 'rider2@annaya.test', 'Rider2Pass!', '9860000044', 'rider', 'light', JSON_ARRAY('Safe Ride'), 'active', 0),
+(45, 'Rider Three', 'rider3@annaya.test', 'Rider3Pass!', '9860000045', 'rider', 'light', JSON_ARRAY('Quick Delivery'), 'active', 0);
+
+INSERT INTO rider_profiles (user_id, availability_status, vehicle_label, current_latitude, current_longitude) VALUES
+(43, 'available', 'Bike - BA 01 0001', 27.7172000, 85.3240000),
+(44, 'available', 'Scooter - BA 01 0002', 27.7075000, 85.3303000),
+(45, 'offline', 'Bike - BA 01 0003', 27.6998000, 85.3121000);
+
+UPDATE restaurants SET restaurant_location_url = CASE id
+  WHEN 1 THEN 'https://www.google.com/maps?q=27.7172000,85.3240000'
+  WHEN 2 THEN 'https://www.google.com/maps?q=27.7105000,85.3290000'
+  WHEN 3 THEN 'https://www.google.com/maps?q=27.7062000,85.3154000'
+  ELSE NULL
+END;
+
+
+INSERT INTO user_saved_locations (user_id, label, location_input, google_maps_url, latitude, longitude) VALUES
+(23, 'Home', '27.7172,85.3240', NULL, 27.7172000, 85.3240000),
+(23, 'Office', 'https://www.google.com/maps?q=27.7008,85.3334', 'https://www.google.com/maps?q=27.7008,85.3334', 27.7008000, 85.3334000);
