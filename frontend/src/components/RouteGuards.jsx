@@ -20,6 +20,7 @@ export function RequireRole({ role, loginPath }) {
   if (user.role !== role) {
     if (user.role === 'restaurant_admin') return <Navigate to="/admin/dashboard" replace />;
     if (user.role === 'super_admin') return <Navigate to="/superadmin/dashboard" replace />;
+    if (user.role === 'rider') return <Navigate to="/rider/dashboard" replace />;
     return <Navigate to="/dashboard" replace />;
   }
 
