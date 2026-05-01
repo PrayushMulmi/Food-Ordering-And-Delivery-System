@@ -59,7 +59,22 @@ export const UserModel = {
        FROM users WHERE id = ? LIMIT 1`,
       [id],
     );
-    return this.normalize(rows[0] || null);
+    const user = this.normalize(rows[0] || null);
+    if (!user) return null;
+
+    const locations = await query(
+      `SELECT id, label, location_input, google_maps_url, latitude, longitude, created_at, updated_at
+       FROM user_saved_locations WHERE user_id = ? ORDER BY label ASC, id DESC`,
+      [id],
+    );
+    return {
+      ...user,
+      saved_locations: locations.map((row) => ({
+        ...row,
+        latitude: row.latitude == null ? null : Number(row.latitude),
+        longitude: row.longitude == null ? null : Number(row.longitude),
+      })),
+    };
   },
 
   async findAuthUserByEmail(email) {
