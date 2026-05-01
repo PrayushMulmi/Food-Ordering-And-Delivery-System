@@ -15,8 +15,8 @@ export const RestaurantModel = {
   async create(data) {
     const result = await query(
       `INSERT INTO restaurants
-      (owner_user_id, name, description, cuisine, address, contact_phone, image_url, cover_photo_url, gallery_images, price_level, is_open, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (owner_user_id, name, description, cuisine, address, contact_phone, image_url, cover_photo_url, gallery_images, price_level, is_open, status, restaurant_location_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         data.owner_user_id,
         data.name,
@@ -30,6 +30,7 @@ export const RestaurantModel = {
         data.price_level || "$$",
         data.is_open ? 1 : 0,
         data.status || "active",
+        data.restaurant_location_url || null,
       ],
     );
     return this.findById(result.insertId);
@@ -89,7 +90,7 @@ export const RestaurantModel = {
   async update(id, data) {
     await query(
       `UPDATE restaurants
-       SET name = ?, description = ?, cuisine = ?, address = ?, contact_phone = ?, image_url = ?, cover_photo_url = ?, gallery_images = ?, price_level = ?, is_open = ?
+       SET name = ?, description = ?, cuisine = ?, address = ?, contact_phone = ?, image_url = ?, cover_photo_url = ?, gallery_images = ?, price_level = ?, is_open = ?, restaurant_location_url = ?
        WHERE id = ?`,
       [
         data.name,
@@ -102,6 +103,7 @@ export const RestaurantModel = {
         JSON.stringify(data.gallery_images || []),
         data.price_level || "$$",
         data.is_open ? 1 : 0,
+        data.restaurant_location_url || null,
         id,
       ],
     );
@@ -140,5 +142,3 @@ export const RestaurantModel = {
     };
   },
 };
-export const restaurants = [{ id: 1, name: "Rudra Cafe", cuisine: "Multi-Cuisine", rating: 4.5 }, { id: 2, name: "Pizza Palace", cuisine: "Italian", rating: 4.7 }];
-
