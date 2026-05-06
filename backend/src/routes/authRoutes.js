@@ -5,6 +5,9 @@ import {
   getMe,
   updateMyProfile,
   changeMyPassword,
+  requestPasswordReset,
+  verifyPasswordResetCode,
+  resetPasswordWithCode,
   registerValidation,
   loginValidation,
 } from "../controllers/authController.js";
@@ -15,6 +18,9 @@ const router = express.Router();
 
 router.post("/register", registerValidation, register);
 router.post("/login", loginValidation, login);
+router.post("/forgot-password/request", requestPasswordReset);
+router.post("/forgot-password/verify", verifyPasswordResetCode);
+router.post("/forgot-password/reset", resetPasswordWithCode);
 router.get("/me", protect, getMe);
 router.put("/me", protect, updateMyProfile);
 router.put("/change-password", protect, changeMyPassword);
