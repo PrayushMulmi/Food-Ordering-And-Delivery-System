@@ -1,5 +1,8 @@
 USE food_ordering_and_delivery_app;
 
+DROP TABLE IF EXISTS rider_notifications;
+DROP TABLE IF EXISTS rider_profiles;
+DROP TABLE IF EXISTS password_reset_codes;
 DROP TABLE IF EXISTS admin_action_logs;
 DROP TABLE IF EXISTS reviews;
 DROP TABLE IF EXISTS order_status_logs;
@@ -19,7 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(150) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
   phone VARCHAR(30) NULL,
-  role ENUM('customer', 'restaurant_admin', 'super_admin') NOT NULL DEFAULT 'customer',
+  role ENUM('customer', 'restaurant_admin', 'super_admin', 'rider') NOT NULL DEFAULT 'customer',
   theme VARCHAR(30) DEFAULT 'light',
   food_preferences JSON NULL,
   status ENUM('active', 'suspended') DEFAULT 'active',
@@ -29,6 +32,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS restaurants (
   id INT PRIMARY KEY AUTO_INCREMENT,
+  restaurant_code VARCHAR(50) NULL UNIQUE,
   owner_user_id INT NOT NULL UNIQUE,
   name VARCHAR(150) NOT NULL,
   description TEXT NULL,
@@ -36,9 +40,17 @@ CREATE TABLE IF NOT EXISTS restaurants (
   address VARCHAR(255) NULL,
   contact_phone VARCHAR(30) NULL,
   image_url TEXT NULL,
+  image_blob LONGBLOB NULL,
+  image_mime VARCHAR(100) NULL,
   cover_photo_url TEXT NULL,
+  cover_photo_blob LONGBLOB NULL,
+  cover_photo_mime VARCHAR(100) NULL,
   gallery_images JSON NULL,
   price_level VARCHAR(10) DEFAULT '$$',
+  restaurant_location_url TEXT NULL,
+  latitude DECIMAL(10,7) NULL,
+  longitude DECIMAL(10,7) NULL,
+  region ENUM('Kathmandu', 'Bhaktapur', 'Lalitpur') NOT NULL DEFAULT 'Kathmandu',
   rating_average DECIMAL(3,2) DEFAULT 0.00,
   is_open TINYINT(1) DEFAULT 1,
   status ENUM('active', 'suspended') DEFAULT 'active',
@@ -54,6 +66,8 @@ CREATE TABLE IF NOT EXISTS menu_items (
   description TEXT NULL,
   price DECIMAL(10,2) NOT NULL,
   image_url TEXT NULL,
+  image_blob LONGBLOB NULL,
+  image_mime VARCHAR(100) NULL,
   is_available TINYINT(1) DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
@@ -70,6 +84,18 @@ CREATE TABLE IF NOT EXISTS user_saved_locations (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uniq_user_location_label (user_id, label),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS password_reset_codes (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  phone VARCHAR(30) NOT NULL,
+  code_hash VARCHAR(255) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  used_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_password_reset_phone (phone),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -101,6 +127,7 @@ CREATE TABLE IF NOT EXISTS coupons (
   code VARCHAR(50) NOT NULL UNIQUE,
   discount_type ENUM('percentage', 'flat') NOT NULL,
   discount_value DECIMAL(10,2) NOT NULL,
+  max_discount_amount DECIMAL(10,2) NULL,
   min_order_amount DECIMAL(10,2) DEFAULT 0.00,
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
@@ -125,11 +152,18 @@ CREATE TABLE IF NOT EXISTS orders (
   delivery_address VARCHAR(255) NOT NULL,
   notes TEXT NULL,
   status ENUM('Pending','Confirmed','Preparing','Ready for Dispatch','Out for Delivery','Delivered','Cancelled','Refunded') DEFAULT 'Pending',
+  assigned_rider_user_id INT NULL,
+  delivery_latitude DECIMAL(10,7) NULL,
+  delivery_longitude DECIMAL(10,7) NULL,
+  rider_current_latitude DECIMAL(10,7) NULL,
+  rider_current_longitude DECIMAL(10,7) NULL,
+  rider_location_updated_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE,
   FOREIGN KEY (basket_id) REFERENCES baskets(id) ON DELETE SET NULL,
-  FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE SET NULL
+  FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE SET NULL,
+  FOREIGN KEY (assigned_rider_user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS order_items (
@@ -246,6 +280,12 @@ INSERT INTO restaurants (id, owner_user_id, name, description, cuisine, address,
 (18, 20, 'Taco Tales', 'Taco Tales serves fresh mexican food with quick delivery across Lalitpur.', 'Mexican', 'Lalitpur', '981110018', NULL, NULL, JSON_ARRAY(), '$$', 4.55, 1, 'active'),
 (19, 21, 'Coffee Crumb', 'Coffee Crumb serves fresh cafe food with quick delivery across Kathmandu.', 'Cafe', 'Kathmandu', '981110019', NULL, NULL, JSON_ARRAY(), '$', 4.7, 1, 'active'),
 (20, 22, 'Ocean Grill', 'Ocean Grill serves fresh seafood food with quick delivery across Bhaktapur.', 'Seafood', 'Bhaktapur', '981110020', NULL, NULL, JSON_ARRAY(), '$$$', 4.1, 1, 'active');
+
+UPDATE restaurants
+SET restaurant_code = CONCAT('REST-', id, '-', UPPER(SUBSTRING(MD5(CONCAT(id, name, owner_user_id)), 1, 8)))
+WHERE restaurant_code IS NULL OR restaurant_code = '';
+
+ALTER TABLE restaurants MODIFY restaurant_code VARCHAR(50) NOT NULL;
 
 INSERT INTO menu_items (id, restaurant_id, category, name, description, price, image_url, is_available) VALUES
 (1, 1, 'Popular', 'Chicken Burger', 'Chicken Burger from Annaya Kitchen', 299.00, NULL, 1),
@@ -539,21 +579,13 @@ VALUES
 (1, 'restaurant', 3, 'reviewed_account', 'Initial demo moderation log'),
 (2, 'user', 25, 'checked_profile', 'Initial demo audit log');
 
-ALTER TABLE users MODIFY role ENUM('customer', 'restaurant_admin', 'super_admin', 'rider') NOT NULL DEFAULT 'customer';
-ALTER TABLE restaurants ADD COLUMN restaurant_location_url TEXT NULL;
-ALTER TABLE orders ADD COLUMN assigned_rider_user_id INT NULL;
-ALTER TABLE orders ADD COLUMN delivery_latitude DECIMAL(10,7) NULL;
-ALTER TABLE orders ADD COLUMN delivery_longitude DECIMAL(10,7) NULL;
-ALTER TABLE orders ADD COLUMN rider_current_latitude DECIMAL(10,7) NULL;
-ALTER TABLE orders ADD COLUMN rider_current_longitude DECIMAL(10,7) NULL;
-ALTER TABLE orders ADD COLUMN rider_location_updated_at TIMESTAMP NULL;
-ALTER TABLE orders ADD CONSTRAINT fk_orders_assigned_rider FOREIGN KEY (assigned_rider_user_id) REFERENCES users(id) ON DELETE SET NULL;
 
 CREATE TABLE IF NOT EXISTS rider_profiles (
   id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL UNIQUE,
   availability_status ENUM('available', 'assigned', 'offline') NOT NULL DEFAULT 'available',
   vehicle_label VARCHAR(100) NULL,
+  region ENUM('Kathmandu', 'Bhaktapur', 'Lalitpur') NOT NULL DEFAULT 'Kathmandu',
   current_latitude DECIMAL(10,7) NULL,
   current_longitude DECIMAL(10,7) NULL,
   last_active_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -578,19 +610,37 @@ INSERT INTO users (id, full_name, email, password, phone, role, theme, food_pref
 (44, 'Rider Two', 'rider2@annaya.test', 'Rider2Pass!', '9860000044', 'rider', 'light', JSON_ARRAY('Safe Ride'), 'active', 0),
 (45, 'Rider Three', 'rider3@annaya.test', 'Rider3Pass!', '9860000045', 'rider', 'light', JSON_ARRAY('Quick Delivery'), 'active', 0);
 
-INSERT INTO rider_profiles (user_id, availability_status, vehicle_label, current_latitude, current_longitude) VALUES
-(43, 'available', 'Bike - BA 01 0001', 27.7172000, 85.3240000),
-(44, 'available', 'Scooter - BA 01 0002', 27.7075000, 85.3303000),
-(45, 'offline', 'Bike - BA 01 0003', 27.6998000, 85.3121000);
+INSERT INTO rider_profiles (user_id, availability_status, vehicle_label, region, current_latitude, current_longitude) VALUES
+(43, 'available', 'Bike - BA 01 0001', 'Kathmandu', 27.7172000, 85.3240000),
+(44, 'available', 'Scooter - BA 01 0002', 'Bhaktapur', 27.6710000, 85.4298000),
+(45, 'offline', 'Bike - BA 01 0003', 'Lalitpur', 27.6644000, 85.3188000);
 
 UPDATE restaurants SET restaurant_location_url = CASE id
-  WHEN 1 THEN 'https://www.google.com/maps?q=27.7172000,85.3240000'
-  WHEN 2 THEN 'https://www.google.com/maps?q=27.7105000,85.3290000'
-  WHEN 3 THEN 'https://www.google.com/maps?q=27.7062000,85.3154000'
+  WHEN 1 THEN 'https://www.openstreetmap.org/?mlat=27.7172000&mlon=85.3240000#map=16/27.7172000/85.3240000'
+  WHEN 2 THEN 'https://www.openstreetmap.org/?mlat=27.7105000&mlon=85.3290000#map=16/27.7105000/85.3290000'
+  WHEN 3 THEN 'https://www.openstreetmap.org/?mlat=27.7062000&mlon=85.3154000#map=16/27.7062000/85.3154000'
   ELSE NULL
 END;
 
+UPDATE restaurants SET latitude = CASE id
+  WHEN 1 THEN 27.7172000
+  WHEN 2 THEN 27.7105000
+  WHEN 3 THEN 27.7062000
+  ELSE latitude
+END, longitude = CASE id
+  WHEN 1 THEN 85.3240000
+  WHEN 2 THEN 85.3290000
+  WHEN 3 THEN 85.3154000
+  ELSE longitude
+END;
+
+UPDATE restaurants SET region = CASE id
+  WHEN 1 THEN 'Kathmandu'
+  WHEN 2 THEN 'Bhaktapur'
+  WHEN 3 THEN 'Lalitpur'
+  ELSE 'Kathmandu'
+END;
 
 INSERT INTO user_saved_locations (user_id, label, location_input, google_maps_url, latitude, longitude) VALUES
 (23, 'Home', '27.7172,85.3240', NULL, 27.7172000, 85.3240000),
-(23, 'Office', 'https://www.google.com/maps?q=27.7008,85.3334', 'https://www.google.com/maps?q=27.7008,85.3334', 27.7008000, 85.3334000);
+(23, 'Office', 'https://www.openstreetmap.org/?mlat=27.7008&mlon=85.3334#map=16/27.7008/85.3334', 'https://www.openstreetmap.org/?mlat=27.7008&mlon=85.3334#map=16/27.7008/85.3334', 27.7008000, 85.3334000);
