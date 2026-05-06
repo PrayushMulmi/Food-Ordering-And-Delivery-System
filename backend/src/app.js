@@ -7,34 +7,47 @@ import { notFoundHandler, errorHandler } from "./middleware/errorMiddleware.js";
 
 const app = express();
 
-const configuredOrigins = (process.env.CORS_ORIGINS || '')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const configuredOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "http://192.168.1.10:5173",
+  "http://192.168.1.219:5173",
+  ...(process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+];
 
-const localhostOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
+const localhostOriginPattern = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/;
+const localNetworkOriginPattern = /^http:\/\/((10|172\.(1[6-9]|2\d|3[0-1])|192\.168)\.\d{1,3}\.\d{1,3}):\d+$/;
 
-app.use(cors({
-  origin(origin, callback) {
-    if (!origin) {
-      return callback(null, true);
-    }
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) {
+        return callback(null, true);
+      }
 
-    if (configuredOrigins.includes(origin) || localhostOriginPattern.test(origin)) {
-      return callback(null, true);
-    }
+      if (
+        configuredOrigins.includes(origin) ||
+        localhostOriginPattern.test(origin) ||
+        localNetworkOriginPattern.test(origin)
+      ) {
+        return callback(null, true);
+      }
 
-    return callback(null, false);
-  },
-  credentials: true,
-}));
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+      return callback(null, false);
+    },
+    credentials: true,
+  }),
+);
+app.use(express.json({ limit: "15mb" }));
+app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 app.use(morgan("dev"));
-app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
+app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 
-app.get('/', (_req, res) => {
-  res.json({ success: true, message: 'Food Ordering API is running' });
+app.get("/", (_req, res) => {
+  res.json({ success: true, message: "Food Ordering API is running" });
 });
 
 app.get("/api/health", (_req, res) => {
