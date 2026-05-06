@@ -12,8 +12,8 @@ const startServer = async () => {
     const connection = await pool.getConnection();
     connection.release();
 
-    app.listen(PORT, () => {
-      console.log(`Backend running on http://localhost:${PORT}`);
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Backend running on http://0.0.0.0:${PORT}`);
     });
   } catch (error) {
     console.error("Database connection failed:", error.message);
