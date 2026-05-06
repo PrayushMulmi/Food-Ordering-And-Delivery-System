@@ -24,9 +24,13 @@ import { SuperAdminLayout } from "../views/superadmin/SuperAdminLayout";
 import { SuperAdminDashboard } from "../views/superadmin/SuperAdminDashboard";
 import { SuperAdminRestaurants } from "../views/superadmin/SuperAdminRestaurants";
 import { SuperAdminUsers } from "../views/superadmin/SuperAdminUsers";
+import { SuperAdminCoupons } from "../views/superadmin/SuperAdminCoupons";
 import { RequireLogin, RequireRole } from "../components/RouteGuards";
 import { RoleLoginPage } from "../views/RoleLoginPage";
 import { NotFoundPage, RouteErrorPage } from "../views/RouteErrorPage";
+import { RiderLayout } from "../views/rider/RiderLayout";
+import { RiderDashboard } from "../views/rider/RiderDashboard";
+import { RiderOrders } from "../views/rider/RiderOrders";
 
 export const router = createBrowserRouter([
   {
@@ -39,7 +43,7 @@ export const router = createBrowserRouter([
       { path: "signup", Component: SignupPage },
       { path: "dashboard", Component: Dashboard },
       { path: "restaurants", Component: Restaurants },
-      { path: "restaurant/:id", Component: RestaurantDetail },
+      { path: "restaurant/:code", Component: RestaurantDetail },
       { path: "category/:category", Component: CategoryBrowse },
       {
         Component: RequireLogin,
@@ -48,7 +52,7 @@ export const router = createBrowserRouter([
           { path: "checkout", Component: Checkout },
           { path: "order-checkout", Component: OrderCheckout },
           { path: "orders", Component: OrderHistory },
-          { path: "order/:id", Component: OrderTracking },
+          { path: "order/:code", Component: OrderTracking },
           { path: "reviews", Component: Reviews },
           { path: "profile", Component: UserProfile },
         ],
@@ -77,6 +81,23 @@ export const router = createBrowserRouter([
       },
     ],
   },
+  { path: "/rider", element: <RoleLoginPage role="rider" /> },
+  {
+    element: <RequireRole role="rider" loginPath="/rider" />,
+    children: [
+      {
+        path: "/rider",
+        Component: RiderLayout,
+        errorElement: <RouteErrorPage homePath="/rider/dashboard" />,
+        children: [
+          { path: "dashboard", Component: RiderDashboard },
+          { path: "orders", Component: RiderOrders },
+          { path: "profile", Component: UserProfile },
+          { path: "*", element: <NotFoundPage homePath="/rider/dashboard" title="Rider page not found" /> },
+        ],
+      },
+    ],
+  },
   { path: "/superadmin", element: <RoleLoginPage role="super_admin" /> },
   {
     element: <RequireRole role="super_admin" loginPath="/superadmin" />,
@@ -89,6 +110,7 @@ export const router = createBrowserRouter([
           { path: "dashboard", Component: SuperAdminDashboard },
           { path: "restaurants", Component: SuperAdminRestaurants },
           { path: "users", Component: SuperAdminUsers },
+          { path: "coupons", Component: SuperAdminCoupons },
           { path: "profile", Component: UserProfile },
           { path: "*", element: <NotFoundPage homePath="/superadmin/dashboard" title="Admin page not found" /> },
         ],
