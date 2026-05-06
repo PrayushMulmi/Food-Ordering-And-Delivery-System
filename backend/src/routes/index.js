@@ -8,6 +8,7 @@ import reviewRoutes from "./reviewRoutes.js";
 import restaurantAdminRoutes from "./restaurantAdminRoutes.js";
 import superAdminRoutes from "./superAdminRoutes.js";
 import riderRoutes from "./riderRoutes.js";
+import chatbotRoutes from "./chatbotRoutes.js";
 
 const router = express.Router();
 
@@ -20,5 +21,6 @@ router.use("/reviews", reviewRoutes);
 router.use("/restaurant-admin", restaurantAdminRoutes);
 router.use("/super-admin", superAdminRoutes);
 router.use("/rider", riderRoutes);
+router.use("/chatbot", chatbotRoutes);
 
 export default router;
