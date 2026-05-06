@@ -19,17 +19,14 @@ export const myOrders = asyncHandler(async (req, res) => {
   sendResponse(res, 200, "Orders fetched", orders);
 });
 
-export const getMyOrderById = asyncHandler(async (req, res) => {
-  const order = await OrderModel.findById(req.params.id);
-  if (!order || Number(order.user_id) !== Number(req.user.id)) {
-    throw new ApiError(404, "Order not found");
-  }
-
+export const getMyOrderByCode = asyncHandler(async (req, res) => {
+  const order = await OrderModel.findByCodeForUser(req.params.code, req.user.id);
+  if (!order) throw new ApiError(404, "Order not found");
   sendResponse(res, 200, "Order fetched", order);
 });
 
-export const cancelMyOrder = asyncHandler(async (req, res) => {
-  const order = await OrderModel.cancelOrderByUser(req.params.id, req.user.id);
+export const cancelMyOrderByCode = asyncHandler(async (req, res) => {
+  const order = await OrderModel.cancelOrderByUserCode(req.params.code, req.user.id);
   sendResponse(res, 200, "Order cancelled", order);
 });
 
