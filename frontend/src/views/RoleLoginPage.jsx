@@ -1,11 +1,36 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { Button, Input } from '../shared/ui';
 import imgLogo from '../assets/43f7673940367781fb7ec14544ebbbad91e6ffee.png';
 import { toast } from 'sonner';
 import { authenticateUser, registerUser } from '../controllers/authController';
 import { getUser, isLoggedIn } from '../lib/auth';
-import { BackButton } from '../shared/navigation';
+
+
+function PasswordField({ value, onChange, placeholder, className = 'h-12', required = true }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        type={visible ? 'text' : 'password'}
+        placeholder={placeholder}
+        className={`${className} pr-11`}
+        value={value}
+        onChange={onChange}
+        required={required}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((next) => !next)}
+        className="absolute right-3 top-3 text-gray-500 hover:text-[#22C55E]"
+        aria-label={visible ? 'Hide password' : 'Show password'}
+      >
+        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
 
 export function RoleLoginPage({ role = 'restaurant_admin' }) {
   const navigate = useNavigate();
@@ -31,7 +56,7 @@ export function RoleLoginPage({ role = 'restaurant_admin' }) {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await authenticateUser(loginForm);
+      const response = await authenticateUser({ ...loginForm, expected_role: role });
       if (response?.data?.user?.role !== role) throw new Error(`This page is only for ${roleTitle.toLowerCase()} users.`);
       toast.success(`${roleTitle} login successful`);
       navigate(location.state?.from || successPath, { replace: true });
@@ -49,8 +74,9 @@ export function RoleLoginPage({ role = 'restaurant_admin' }) {
     setLoading(true);
     try {
       await registerUser({ ...registerForm, role: 'restaurant_admin' });
-      toast.success('Restaurant admin account created');
-      navigate('/admin/dashboard', { replace: true });
+      toast.success('Restaurant admin account created. Please log in.');
+      setLoginForm((p) => ({ ...p, email: registerForm.email }));
+      switchMode('login');
     } catch (error) {
       toast.error(error.message || 'Registration failed');
     } finally {
@@ -67,7 +93,6 @@ export function RoleLoginPage({ role = 'restaurant_admin' }) {
     <div className="min-h-screen bg-white px-4 py-6">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex items-center justify-between gap-4">
-          <BackButton fallbackPath="/" variant="outline" />
           <Link to="/" className="flex items-center justify-end">
             <img src={imgLogo} alt="Annaya" className="h-20 w-auto" />
           </Link>
@@ -89,7 +114,7 @@ export function RoleLoginPage({ role = 'restaurant_admin' }) {
           {mode === 'login' || role === 'super_admin' ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <Input type="email" placeholder="Email" className="h-12" value={loginForm.email} onChange={(e) => setLoginForm((p) => ({ ...p, email: e.target.value }))} required />
-              <Input type="password" placeholder="Password" className="h-12" value={loginForm.password} onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))} required />
+              <PasswordField placeholder="Password" value={loginForm.password} onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))} />
               <Button type="submit" disabled={loading} className="h-12 w-full bg-black text-white hover:bg-gray-800">{loading ? 'Signing in...' : 'Sign in'}</Button>
             </form>
           ) : (
@@ -100,8 +125,8 @@ export function RoleLoginPage({ role = 'restaurant_admin' }) {
               <Input placeholder="Restaurant name" className="h-12" value={registerForm.restaurant_name} onChange={(e) => setRegisterForm((p) => ({ ...p, restaurant_name: e.target.value }))} required />
               <Input placeholder="Cuisine" className="h-12" value={registerForm.restaurant_cuisine} onChange={(e) => setRegisterForm((p) => ({ ...p, restaurant_cuisine: e.target.value }))} required />
               <Input placeholder="Address" className="h-12" value={registerForm.restaurant_address} onChange={(e) => setRegisterForm((p) => ({ ...p, restaurant_address: e.target.value }))} required />
-              <Input type="password" placeholder="Password" className="h-12" value={registerForm.password} onChange={(e) => setRegisterForm((p) => ({ ...p, password: e.target.value }))} required />
-              <Input type="password" placeholder="Confirm password" className="h-12" value={registerForm.confirm_password} onChange={(e) => setRegisterForm((p) => ({ ...p, confirm_password: e.target.value }))} required />
+              <PasswordField placeholder="Password" value={registerForm.password} onChange={(e) => setRegisterForm((p) => ({ ...p, password: e.target.value }))} />
+              <PasswordField placeholder="Confirm password" value={registerForm.confirm_password} onChange={(e) => setRegisterForm((p) => ({ ...p, confirm_password: e.target.value }))} />
               <textarea placeholder="Restaurant description" className="min-h-[110px] rounded-md border border-gray-300 px-3 py-2 text-sm md:col-span-2" value={registerForm.restaurant_description} onChange={(e) => setRegisterForm((p) => ({ ...p, restaurant_description: e.target.value }))} />
               <Button type="submit" disabled={loading} className="h-12 w-full md:col-span-2">{loading ? 'Creating account...' : 'Create restaurant admin account'}</Button>
             </form>
