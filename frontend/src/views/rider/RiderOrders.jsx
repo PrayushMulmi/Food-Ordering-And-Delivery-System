@@ -1,0 +1,161 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { api } from '../../lib/api';
+import { Badge, Button } from '../../shared/ui';
+import { toast } from 'sonner';
+import { buildOpenStreetMapDirectionsUrl } from '../../utils/location';
+
+const TRACKING_INTERVAL_MS = 10000;
+
+export function RiderOrders() {
+  const [orders, setOrders] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [gpsStatus, setGpsStatus] = useState('Waiting until an order is dispatched.');
+  const timerRef = useRef(null);
+  const selectedOrderRef = useRef(null);
+
+  const load = useCallback(async () => {
+    const res = await api.get('/api/rider/orders');
+    const nextOrders = res.data || [];
+    setOrders(nextOrders);
+    if (selectedOrderRef.current) {
+      const match = nextOrders.find((item) => Number(item.id) === Number(selectedOrderRef.current.id));
+      if (match) {
+        const detail = await api.get(`/api/rider/orders/${match.id}`);
+        setSelectedOrder(detail.data || match);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    selectedOrderRef.current = selectedOrder;
+  }, [selectedOrder]);
+
+  useEffect(() => { load().catch(() => {}); }, [load]);
+
+  const activeOrder = useMemo(() => orders.find((item) => item.status === 'Out for Delivery'), [orders]);
+
+  useEffect(() => {
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    if (!activeOrder) {
+      setGpsStatus('Waiting until an order is dispatched.');
+      return undefined;
+    }
+
+    if (!navigator.geolocation) {
+      setGpsStatus('Geolocation is not supported on this device.');
+      return undefined;
+    }
+
+    const syncLocation = () => {
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const next = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          active_order_id: activeOrder.id,
+          accuracy_meters: position.coords.accuracy,
+        };
+
+        try {
+          const response = await api.put('/api/rider/location', next);
+          setGpsStatus(`Live GPS synced at ${new Date().toLocaleTimeString()}${response?.data?.accuracy_meters ? ` • ±${Math.round(response.data.accuracy_meters)}m` : ''}`);
+          load().catch(() => {});
+        } catch (error) {
+          toast.error(error.message || 'Could not update rider location');
+        }
+      }, (error) => {
+        if (error.code === 1) setGpsStatus('Location permission denied. Enable GPS access to share live delivery updates.');
+        else if (error.code === 3) setGpsStatus('Timed out while requesting GPS. Move near a window or try a mobile device.');
+        else setGpsStatus('Unable to read GPS right now.');
+      }, {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 10000,
+      });
+    };
+
+    setGpsStatus('Order collected. Sharing real GPS every 10 seconds...');
+    syncLocation();
+    timerRef.current = window.setInterval(syncLocation, TRACKING_INTERVAL_MS);
+
+    return () => {
+      if (timerRef.current) {
+        window.clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [activeOrder, load]);
+
+  const openDetail = async (orderId) => {
+    try {
+      const res = await api.get(`/api/rider/orders/${orderId}`);
+      setSelectedOrder(res.data || null);
+    } catch (error) {
+      toast.error(error.message || 'Could not load order detail');
+    }
+  };
+
+  const openNavigation = () => {
+    if (!selectedOrder) return;
+    const url = buildOpenStreetMapDirectionsUrl({
+      lat: selectedOrder.delivery_latitude ? Number(selectedOrder.delivery_latitude) : null,
+      lng: selectedOrder.delivery_longitude ? Number(selectedOrder.delivery_longitude) : null,
+      address: selectedOrder.delivery_address,
+    });
+    if (!url) {
+      toast.error('Customer location is missing or invalid');
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold">Assigned Orders</h1>
+        <p className="text-gray-600">{gpsStatus}</p>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.9fr]">
+        <div className="space-y-4">
+          {orders.length ? orders.map((order) => (
+            <div key={order.id} className="rounded-2xl border bg-white p-6 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold">{order.order_code}</h2>
+                  <p className="text-sm text-gray-600">{order.restaurant_name} → {order.customer_name}</p>
+                  <p className="text-sm text-gray-500">{order.delivery_address}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge>{order.status}</Badge>
+                  <Button variant="outline" onClick={() => openDetail(order.id)}>View detail</Button>
+                </div>
+              </div>
+            </div>
+          )) : <div className="rounded-2xl border bg-white p-8 text-center text-gray-500">No assigned orders yet.</div>}
+        </div>
+
+        <aside className="rounded-2xl border bg-white p-6 shadow-sm">
+          {selectedOrder ? (
+            <>
+              <h2 className="text-2xl font-semibold">Order detail</h2>
+              <div className="mt-4 space-y-2 text-sm text-gray-700">
+                <p><span className="font-semibold">Order:</span> {selectedOrder.order_code}</p>
+                <p><span className="font-semibold">Customer:</span> {selectedOrder.customer_name}</p>
+                <p><span className="font-semibold">Customer phone:</span> {selectedOrder.customer_phone || '-'}</p>
+                <p><span className="font-semibold">Restaurant:</span> {selectedOrder.restaurant_name}</p>
+                <p><span className="font-semibold">Pickup:</span> {selectedOrder.restaurant_address || '-'}</p>
+                <p><span className="font-semibold">Drop-off:</span> {selectedOrder.delivery_address}</p>
+                <p><span className="font-semibold">Delivery fee:</span> Rs. {Number(selectedOrder.delivery_fee || 0).toFixed(2)}</p>
+                <p><span className="font-semibold">Rider coordinates:</span> {selectedOrder.rider_current_latitude && selectedOrder.rider_current_longitude ? `${selectedOrder.rider_current_latitude}, ${selectedOrder.rider_current_longitude}` : 'Waiting for GPS update'}</p>
+              </div>
+              <Button type="button" className="mt-4 w-full" onClick={openNavigation}>Open customer in OpenStreetMap</Button>
+            </>
+          ) : <p className="text-sm text-gray-500">Select an order to view customer and delivery details.</p>}
+        </aside>
+      </div>
+    </div>
+  );
+}
