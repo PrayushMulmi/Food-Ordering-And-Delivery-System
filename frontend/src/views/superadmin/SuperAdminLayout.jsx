@@ -2,8 +2,9 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LogOut, User } from 'lucide-react';
 import { Button, ConfirmDialog } from '../../shared/ui';
 import { clearSession } from '../../lib/auth';
-import { BackButton } from '../../shared/navigation';
 import { useState } from 'react';
+import imgLogo from '../../assets/43f7673940367781fb7ec14544ebbbad91e6ffee.png';
+import { ThemeToggle } from '../../shared/layout';
 
 export function SuperAdminLayout() {
   const location = useLocation();
@@ -14,10 +15,11 @@ export function SuperAdminLayout() {
     { path: '/superadmin/dashboard', label: 'Dashboard' },
     { path: '/superadmin/restaurants', label: 'Restaurants' },
     { path: '/superadmin/users', label: 'Users' },
+    { path: '/superadmin/coupons', label: 'Coupons' },
   ];
 
   const isActive = (path) => location.pathname === path;
-  const fallbackPath = location.pathname === '/superadmin/dashboard' ? '/superadmin' : '/superadmin/dashboard';
+  const navCls = (path) => `cursor-pointer text-[15px] font-medium transition-colors hover:text-[#22C55E] dark:hover:text-[#22C55E] ${isActive(path) ? 'font-semibold text-[#22C55E]' : 'text-gray-700 dark:text-gray-100'}`;
 
   const logout = () => {
     clearSession();
@@ -26,44 +28,26 @@ export function SuperAdminLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <header className="sticky top-0 z-50 border-b bg-[#dcfce7] shadow-sm">
+    <div className="min-h-screen bg-white dark:bg-black dark:text-white">
+      <header className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur dark:bg-black/95 dark:text-white">
         <div className="container mx-auto px-4">
-          <div className="flex h-24 items-center justify-between gap-6">
-            <nav className="flex items-center gap-8">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`text-xl font-medium transition-colors ${
-                    isActive(link.path)
-                      ? 'font-semibold text-black'
-                      : 'text-[#5b5b5b] hover:text-black'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
+          <div className="flex h-16 items-center justify-between gap-4">
+            <Link to="/superadmin/dashboard" className="flex items-center gap-2">
+              <img src={imgLogo} alt="Annaya" className="h-14 w-auto" />
+            </Link>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/superadmin/profile')} className="hover:bg-white/50">
-                <User className="h-6 w-6" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => setLogoutDialogOpen(true)} className="hover:bg-white/50">
-                <LogOut className="h-6 w-6" />
-              </Button>
+              <ThemeToggle />
+              <Button variant="ghost" size="icon" onClick={() => navigate('/superadmin/profile')}><User className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="icon" onClick={() => setLogoutDialogOpen(true)}><LogOut className="h-5 w-5" /></Button>
             </div>
           </div>
+          <nav className="flex h-12 items-center justify-center gap-6 border-t dark:border-white/10">
+            {navLinks.map((link) => <Link key={link.path} to={link.path} className={navCls(link.path)}>{link.label}</Link>)}
+          </nav>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 pt-4">
-        <BackButton fallbackPath={fallbackPath} />
-      </div>
-
-      <main>
-        <Outlet />
-      </main>
+      <main><Outlet /></main>
 
       <ConfirmDialog
         open={logoutDialogOpen}
