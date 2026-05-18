@@ -16,7 +16,7 @@ import {
   permanentlyDeleteRestaurant,
   resetUserPasswordByAdmin,
   listCoupons,
-  createCoupon,git 
+  createCoupon,
   updateCoupon,
   deleteCoupon,
 } from "../controllers/superAdminController.js";
