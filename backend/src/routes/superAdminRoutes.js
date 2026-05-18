@@ -1,0 +1,42 @@
+import express from "express";
+import { protect } from "../middleware/authMiddleware.js";
+import { allowRoles } from "../middleware/roleMiddleware.js";
+import { ROLES } from "../constants/roles.js";
+import {
+  getSuperAdminDashboard,
+  listUsers,
+  listRestaurants,
+  getUserDetail,
+  getRestaurantDetail,
+  suspendUser,
+  restoreUser,
+  permanentlyDeleteUser,
+  suspendRestaurant,
+  restoreRestaurant,
+  permanentlyDeleteRestaurant,
+  resetUserPasswordByAdmin,
+  listCoupons,
+  createCoupon,
+  updateCoupon,
+  deleteCoupon,
+} from "../controllers/superAdminController.js";
+
+const router = express.Router();
+router.use(protect, allowRoles(ROLES.SUPER_ADMIN));
+router.get("/dashboard", getSuperAdminDashboard);
+router.get("/users", listUsers);
+router.get('/users/:id', getUserDetail);
+router.put("/users/:id/suspend", suspendUser);
+router.put("/users/:id/restore", restoreUser);
+router.delete("/users/:id", permanentlyDeleteUser);
+router.put("/users/:id/reset-password", resetUserPasswordByAdmin);
+router.get("/restaurants", listRestaurants);
+router.get("/coupons", listCoupons);
+router.post("/coupons", createCoupon);
+router.put("/coupons/:id", updateCoupon);
+router.delete("/coupons/:id", deleteCoupon);
+router.get('/restaurants/:id', getRestaurantDetail);
+router.put("/restaurants/:id/suspend", suspendRestaurant);
+router.put("/restaurants/:id/restore", restoreRestaurant);
+router.delete("/restaurants/:id", permanentlyDeleteRestaurant);
+export default router;
