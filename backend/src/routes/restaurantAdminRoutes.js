@@ -6,9 +6,11 @@ import {
   createMyRestaurant,
   getMyRestaurant,
   updateMyRestaurant,
+  updateMyRestaurantOpenStatus,
   getRestaurantDashboard,
   createCoupon,
   listCoupons,
+  listActiveCoupons,
   updateCoupon,
   deleteCoupon,
   listRestaurantOrders,
@@ -23,8 +25,10 @@ router.use(protect, allowRoles(ROLES.RESTAURANT_ADMIN));
 router.post("/restaurant", createMyRestaurant);
 router.get("/restaurant", getMyRestaurant);
 router.put("/restaurant", updateMyRestaurant);
+router.put("/restaurant/status", updateMyRestaurantOpenStatus);
 router.get("/dashboard", getRestaurantDashboard);
 router.get("/coupons", listCoupons);
+router.get("/active-coupons", listActiveCoupons);
 router.post("/coupons", createCoupon);
 router.put("/coupons/:id", updateCoupon);
 router.delete("/coupons/:id", deleteCoupon);

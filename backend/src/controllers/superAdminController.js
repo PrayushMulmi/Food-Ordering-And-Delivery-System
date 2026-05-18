@@ -4,6 +4,7 @@ import { sendResponse } from "../utils/response.js";
 import { DashboardModel } from "../models/dashboardModel.js";
 import { UserModel } from "../models/userModel.js";
 import { RestaurantModel } from "../models/restaurantModel.js";
+import { CouponModel } from "../models/couponModel.js";
 import { AdminActionLogModel } from "../models/adminActionLogModel.js";
 import { sendEmail } from "../services/emailService.js";
 
@@ -176,4 +177,38 @@ export const getRestaurantDetail = asyncHandler(async (req, res) => {
   const restaurant = await RestaurantModel.findById(req.params.id);
   if (!restaurant) throw new ApiError(404, 'Restaurant not found');
   sendResponse(res, 200, 'Restaurant detail fetched', restaurant);
+});
+
+export const listCoupons = asyncHandler(async (req, res) => {
+  const coupons = await CouponModel.listAll();
+  sendResponse(res, 200, "Coupons fetched", coupons);
+});
+
+export const createCoupon = asyncHandler(async (req, res) => {
+  if (!req.body.restaurant_id) throw new ApiError(400, "Restaurant is required");
+  if (!req.body.code) throw new ApiError(400, "Coupon code is required");
+  if (!req.body.end_date && !req.body.expiry_date) throw new ApiError(400, "Expiry date is required");
+  const coupon = await CouponModel.create({
+    ...req.body,
+    discount_type: 'percentage',
+  });
+  sendResponse(res, 201, "Coupon created", coupon);
+});
+
+export const updateCoupon = asyncHandler(async (req, res) => {
+  const coupon = await CouponModel.findById(req.params.id);
+  if (!coupon) throw new ApiError(404, "Coupon not found");
+  const updated = await CouponModel.update(req.params.id, {
+    ...coupon,
+    ...req.body,
+    discount_type: req.body.discount_type || 'percentage',
+  });
+  sendResponse(res, 200, "Coupon updated", updated);
+});
+
+export const deleteCoupon = asyncHandler(async (req, res) => {
+  const coupon = await CouponModel.findById(req.params.id);
+  if (!coupon) throw new ApiError(404, "Coupon not found");
+  await CouponModel.remove(req.params.id);
+  sendResponse(res, 200, "Coupon deleted");
 });

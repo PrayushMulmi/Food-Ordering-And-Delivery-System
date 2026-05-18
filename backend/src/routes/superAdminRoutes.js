@@ -15,6 +15,10 @@ import {
   restoreRestaurant,
   permanentlyDeleteRestaurant,
   resetUserPasswordByAdmin,
+  listCoupons,
+  createCoupon,
+  updateCoupon,
+  deleteCoupon,
 } from "../controllers/superAdminController.js";
 
 const router = express.Router();
@@ -27,6 +31,10 @@ router.put("/users/:id/restore", restoreUser);
 router.delete("/users/:id", permanentlyDeleteUser);
 router.put("/users/:id/reset-password", resetUserPasswordByAdmin);
 router.get("/restaurants", listRestaurants);
+router.get("/coupons", listCoupons);
+router.post("/coupons", createCoupon);
+router.put("/coupons/:id", updateCoupon);
+router.delete("/coupons/:id", deleteCoupon);
 router.get('/restaurants/:id', getRestaurantDetail);
 router.put("/restaurants/:id/suspend", suspendRestaurant);
 router.put("/restaurants/:id/restore", restoreRestaurant);
