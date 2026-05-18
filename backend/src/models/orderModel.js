@@ -31,6 +31,18 @@ export const OrderModel = {
       throw new ApiError(400, "Basket is empty");
     }
 
+    const restaurantRows = await query(
+      `SELECT id, is_open, status FROM restaurants WHERE id = ? LIMIT 1`,
+      [basket.restaurant_id],
+    );
+    const restaurant = restaurantRows[0];
+    if (!restaurant || restaurant.status !== 'active') {
+      throw new ApiError(400, 'Restaurant is not available');
+    }
+    if (Number(restaurant.is_open) !== 1) {
+      throw new ApiError(400, 'This restaurant is currently closed');
+    }
+
     const subtotal = roundMoney(basket.subtotal);
     let discountAmount = 0;
     let coupon = null;
@@ -91,6 +103,10 @@ export const OrderModel = {
   },
 
   async placeOrder(userId, data) {
+    if (!String(data?.delivery_address || '').trim()) throw new ApiError(400, 'Delivery address is required');
+    if (normalizeCoordinate(data?.delivery_latitude) === null || normalizeCoordinate(data?.delivery_longitude) === null) {
+      throw new ApiError(400, 'Delivery map pin is required');
+    }
     const pricing = await this.buildPricingPreview(userId, data);
     const basket = pricing.basket;
     const orderCode = generateOrderCode();
@@ -167,7 +183,7 @@ export const OrderModel = {
 
   async findById(orderId) {
     const orders = await query(
-      `SELECT o.*, r.name AS restaurant_name, r.address AS restaurant_address, r.restaurant_location_url, r.latitude AS restaurant_latitude, r.longitude AS restaurant_longitude, r.region AS restaurant_region,
+      `SELECT o.*, r.name AS restaurant_name, r.address AS restaurant_address, r.contact_phone AS restaurant_contact_phone, CASE WHEN r.image_blob IS NOT NULL THEN CONCAT('/api/restaurants/', r.restaurant_code, '/image/logo') ELSE r.image_url END AS restaurant_logo_url, CASE WHEN r.cover_photo_blob IS NOT NULL THEN CONCAT('/api/restaurants/', r.restaurant_code, '/image/cover') ELSE r.cover_photo_url END AS restaurant_cover_photo_url, r.restaurant_location_url, r.latitude AS restaurant_latitude, r.longitude AS restaurant_longitude, r.region AS restaurant_region,
               u.full_name AS customer_name, c.code AS coupon_code,
               rider.full_name AS rider_name, rider.phone AS rider_phone,
               rp.availability_status AS rider_availability_status

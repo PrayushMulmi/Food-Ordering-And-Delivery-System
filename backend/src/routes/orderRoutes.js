@@ -6,8 +6,8 @@ import {
   previewOrder,
   placeOrder,
   myOrders,
-  getMyOrderById,
-  cancelMyOrder,
+  getMyOrderByCode,
+  cancelMyOrderByCode,
   restaurantOrders,
   updateRestaurantOrderStatus,
 } from "../controllers/orderController.js";
@@ -17,13 +17,8 @@ const router = express.Router();
 router.post("/preview", protect, allowRoles(ROLES.CUSTOMER), previewOrder);
 router.post("/", protect, allowRoles(ROLES.CUSTOMER), placeOrder);
 router.get("/my", protect, allowRoles(ROLES.CUSTOMER), myOrders);
-router.get("/my/:id", protect, allowRoles(ROLES.CUSTOMER), getMyOrderById);
-router.put(
-  "/my/:id/cancel",
-  protect,
-  allowRoles(ROLES.CUSTOMER),
-  cancelMyOrder,
-);
+router.get("/my/:code", protect, allowRoles(ROLES.CUSTOMER), getMyOrderByCode);
+router.put("/my/:code/cancel", protect, allowRoles(ROLES.CUSTOMER), cancelMyOrderByCode);
 
 router.get(
   "/restaurant",

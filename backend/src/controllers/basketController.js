@@ -1,6 +1,7 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import { sendResponse } from "../utils/response.js";
 import { BasketModel } from "../models/basketModel.js";
+import ApiError from "../utils/ApiError.js";
 
 export const getMyBasket = asyncHandler(async (req, res) => {
   const basket = await BasketModel.getDetailedBasket(req.user.id);
@@ -8,6 +9,7 @@ export const getMyBasket = asyncHandler(async (req, res) => {
 });
 
 export const addToBasket = asyncHandler(async (req, res) => {
+  if (!req.body.menu_item_id) throw new ApiError(400, "Menu item is required");
   const basket = await BasketModel.addItem(
     req.user.id,
     req.body.menu_item_id,

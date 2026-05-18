@@ -23,15 +23,23 @@ export const BasketModel = {
   async getDetailedBasket(userId) {
     const basket = await this.getOrCreateBasket(userId);
 
+    const restaurantRows = basket.restaurant_id
+      ? await query(
+          `SELECT id, name FROM restaurants WHERE id = ? LIMIT 1`,
+          [basket.restaurant_id],
+        )
+      : [];
+    const restaurant = restaurantRows[0] || null;
+
     const items = await query(
       `SELECT bi.id, bi.quantity, bi.unit_price, bi.total_price,
               mi.id AS menu_item_id, mi.name, mi.description, mi.category, mi.image_url,
-              r.id AS restaurant_id, r.name AS restaurant_name
+              mi.restaurant_id AS restaurant_id, r.name AS restaurant_name
        FROM basket_items bi
        INNER JOIN menu_items mi ON mi.id = bi.menu_item_id
-       INNER JOIN baskets b ON b.id = bi.basket_id
-       INNER JOIN restaurants r ON r.id = b.restaurant_id
-       WHERE bi.basket_id = ?`,
+       INNER JOIN restaurants r ON r.id = mi.restaurant_id
+       WHERE bi.basket_id = ?
+       ORDER BY bi.id ASC`,
       [basket.id],
     );
 
@@ -40,14 +48,21 @@ export const BasketModel = {
       0,
     );
 
+    const firstItemRestaurant = items.find((item) => item.restaurant_name);
+
     return {
       ...basket,
+      restaurant_name: restaurant?.name || firstItemRestaurant?.restaurant_name || null,
       items,
       subtotal,
     };
   },
 
   async addItem(userId, menuItemId, quantity) {
+    const normalizedQuantity = Number(quantity);
+    if (!Number.isInteger(normalizedQuantity) || normalizedQuantity < 1 || normalizedQuantity > 99) {
+      throw new ApiError(400, "Quantity must be between 1 and 99");
+    }
     const connection = await pool.getConnection();
 
     try {
@@ -72,13 +87,21 @@ export const BasketModel = {
       }
 
       const [menuRows] = await connection.execute(
-        `SELECT * FROM menu_items WHERE id = ? AND is_available = 1 LIMIT 1`,
+        `SELECT mi.*, r.is_open AS restaurant_is_open, r.status AS restaurant_status
+         FROM menu_items mi
+         INNER JOIN restaurants r ON r.id = mi.restaurant_id
+         WHERE mi.id = ? AND mi.is_available = 1 AND r.status = 'active'
+         LIMIT 1`,
         [menuItemId],
       );
       const menuItem = menuRows[0];
 
       if (!menuItem) {
         throw new ApiError(404, "Menu item not found or unavailable");
+      }
+
+      if (Number(menuItem.restaurant_is_open) !== 1) {
+        throw new ApiError(400, "This restaurant is currently closed");
       }
 
       if (
@@ -104,7 +127,8 @@ export const BasketModel = {
       );
 
       if (existingRows[0]) {
-        const newQty = Number(existingRows[0].quantity) + Number(quantity);
+        const newQty = Number(existingRows[0].quantity) + normalizedQuantity;
+        if (newQty > 99) throw new ApiError(400, "Quantity cannot exceed 99");
         const totalPrice = newQty * Number(menuItem.price);
 
         await connection.execute(
@@ -112,11 +136,11 @@ export const BasketModel = {
           [newQty, menuItem.price, totalPrice, existingRows[0].id],
         );
       } else {
-        const totalPrice = Number(quantity) * Number(menuItem.price);
+        const totalPrice = normalizedQuantity * Number(menuItem.price);
         await connection.execute(
           `INSERT INTO basket_items (basket_id, menu_item_id, quantity, unit_price, total_price)
            VALUES (?, ?, ?, ?, ?)`,
-          [basket.id, menuItemId, quantity, menuItem.price, totalPrice],
+          [basket.id, menuItemId, normalizedQuantity, menuItem.price, totalPrice],
         );
       }
 
@@ -131,6 +155,10 @@ export const BasketModel = {
   },
 
   async updateItemQuantity(userId, basketItemId, quantity) {
+    const normalizedQuantity = Number(quantity);
+    if (!Number.isInteger(normalizedQuantity) || normalizedQuantity < 1 || normalizedQuantity > 99) {
+      throw new ApiError(400, "Quantity must be between 1 and 99");
+    }
     const basket = await this.getOrCreateBasket(userId);
 
     const items = await query(
@@ -145,11 +173,11 @@ export const BasketModel = {
       throw new ApiError(404, "Basket item not found");
     }
 
-    const totalPrice = Number(quantity) * Number(items[0].price);
+    const totalPrice = normalizedQuantity * Number(items[0].price);
 
     await query(
       `UPDATE basket_items SET quantity = ?, unit_price = ?, total_price = ? WHERE id = ?`,
-      [quantity, items[0].price, totalPrice, basketItemId],
+      [normalizedQuantity, items[0].price, totalPrice, basketItemId],
     );
 
     return this.getDetailedBasket(userId);
