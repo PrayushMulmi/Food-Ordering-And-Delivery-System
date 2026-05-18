@@ -1,15 +1,23 @@
 import { query } from "../config/db.js";
 import { calculateDistanceMeters } from "../utils/location.js";
 
+const VALID_REGIONS = ['Kathmandu', 'Bhaktapur', 'Lalitpur'];
+const normalizeRegion = (region) => VALID_REGIONS.includes(region) ? region : 'Kathmandu';
+
 export const RiderModel = {
-  async findAvailableRider() {
+  async findAvailableRider(region = 'Kathmandu') {
+    const normalizedRegion = normalizeRegion(region);
     const rows = await query(
-      `SELECT u.id, u.full_name, u.email, rp.availability_status
+      `SELECT u.id, u.full_name, u.email, rp.availability_status, rp.region
        FROM users u
        INNER JOIN rider_profiles rp ON rp.user_id = u.id
-       WHERE u.role = 'rider' AND u.status = 'active' AND rp.availability_status = 'available'
+       WHERE u.role = 'rider'
+         AND u.status = 'active'
+         AND rp.availability_status = 'available'
+         AND rp.region = ?
        ORDER BY rp.last_active_at DESC, u.id ASC
-       LIMIT 1`
+       LIMIT 1`,
+      [normalizedRegion],
     );
     return rows[0] || null;
   },
@@ -76,7 +84,7 @@ export const RiderModel = {
 
   async listOrders(userId) {
     return query(
-      `SELECT o.*, r.name AS restaurant_name, r.address AS restaurant_address, u.full_name AS customer_name
+      `SELECT o.*, r.name AS restaurant_name, r.address AS restaurant_address, r.region AS restaurant_region, u.full_name AS customer_name
        FROM orders o
        INNER JOIN restaurants r ON r.id = o.restaurant_id
        INNER JOIN users u ON u.id = o.user_id
@@ -88,10 +96,10 @@ export const RiderModel = {
 
   async getOrderDetail(orderId, userId) {
     const rows = await query(
-      `SELECT o.*, r.name AS restaurant_name, r.address AS restaurant_address, r.restaurant_location_url,
+      `SELECT o.*, r.name AS restaurant_name, r.address AS restaurant_address, r.restaurant_location_url, r.latitude AS restaurant_latitude, r.longitude AS restaurant_longitude, r.region AS restaurant_region,
               u.full_name AS customer_name, u.phone AS customer_phone,
               rp.current_latitude AS rider_current_latitude, rp.current_longitude AS rider_current_longitude,
-              rp.availability_status AS rider_availability_status
+              rp.availability_status AS rider_availability_status, rp.region AS rider_region
        FROM orders o
        INNER JOIN restaurants r ON r.id = o.restaurant_id
        INNER JOIN users u ON u.id = o.user_id
@@ -121,10 +129,6 @@ export const RiderModel = {
     const distanceMeters = previous ? calculateDistanceMeters(previous, next) : null;
     const changed = !previous || distanceMeters > 0.5;
 
-    if (!changed) {
-      return { updated: false, latitude, longitude, distance_meters: 0, active_order_id: payload.activeOrderId || null };
-    }
-
     await query(
       `UPDATE rider_profiles
        SET current_latitude = ?, current_longitude = ?, last_active_at = CURRENT_TIMESTAMP
@@ -136,7 +140,7 @@ export const RiderModel = {
     if (payload.activeOrderId) {
       const rows = await query(
         `SELECT id FROM orders
-         WHERE id = ? AND assigned_rider_user_id = ? AND status IN ('Preparing', 'Ready for Dispatch', 'Out for Delivery')
+         WHERE id = ? AND assigned_rider_user_id = ? AND status = 'Out for Delivery'
          LIMIT 1`,
         [payload.activeOrderId, userId],
       );
@@ -146,7 +150,7 @@ export const RiderModel = {
     if (!activeOrder) {
       const rows = await query(
         `SELECT id FROM orders
-         WHERE assigned_rider_user_id = ? AND status IN ('Preparing', 'Ready for Dispatch', 'Out for Delivery')
+         WHERE assigned_rider_user_id = ? AND status = 'Out for Delivery'
          ORDER BY id DESC LIMIT 1`,
         [userId],
       );
@@ -164,11 +168,13 @@ export const RiderModel = {
 
     return {
       updated: true,
+      changed,
       latitude,
       longitude,
       distance_meters: distanceMeters == null ? null : Number(distanceMeters.toFixed(2)),
       active_order_id: activeOrder?.id || null,
       accuracy_meters: payload.accuracyMeters == null ? null : Number(payload.accuracyMeters),
+      live_order_tracking_active: Boolean(activeOrder?.id),
     };
   },
 
@@ -178,6 +184,16 @@ export const RiderModel = {
       [availabilityStatus, userId],
     );
 
+    const rows = await query(`SELECT * FROM rider_profiles WHERE user_id = ? LIMIT 1`, [userId]);
+    return rows[0] || null;
+  },
+
+  async updateRegion(userId, region) {
+    const normalizedRegion = normalizeRegion(region);
+    await query(
+      `UPDATE rider_profiles SET region = ?, last_active_at = CURRENT_TIMESTAMP WHERE user_id = ?`,
+      [normalizedRegion, userId],
+    );
     const rows = await query(`SELECT * FROM rider_profiles WHERE user_id = ? LIMIT 1`, [userId]);
     return rows[0] || null;
   },

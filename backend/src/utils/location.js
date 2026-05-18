@@ -1,10 +1,13 @@
-const GOOGLE_MAPS_HOSTS = new Set([
+const SUPPORTED_MAP_HOSTS = new Set([
   'maps.google.com',
   'www.google.com',
   'google.com',
   'www.google.com.np',
   'maps.app.goo.gl',
   'goo.gl',
+  'www.openstreetmap.org',
+  'openstreetmap.org',
+  'osm.org',
 ]);
 
 export function normalizeCoordinate(value) {
@@ -30,24 +33,35 @@ export function parseCoordinatesFromText(value) {
   return { latitude, longitude };
 }
 
-export function parseCoordinatesFromGoogleMapsUrl(value) {
+export function parseCoordinatesFromMapUrl(value) {
   if (!value) return null;
 
   try {
     const url = new URL(String(value).trim());
     const host = url.hostname.toLowerCase();
-    if (![...GOOGLE_MAPS_HOSTS].some((allowed) => host === allowed || host.endsWith(`.${allowed}`))) {
+    if (![...SUPPORTED_MAP_HOSTS].some((allowed) => host === allowed || host.endsWith(`.${allowed}`))) {
       return null;
     }
 
-    const queryValue = url.searchParams.get('q') || url.searchParams.get('query') || url.searchParams.get('destination');
+    const queryValue = url.searchParams.get('q')
+      || url.searchParams.get('query')
+      || url.searchParams.get('destination')
+      || url.searchParams.get('mlat') && `${url.searchParams.get('mlat')},${url.searchParams.get('mlon')}`;
     const direct = parseCoordinatesFromText(queryValue);
     if (direct) return direct;
 
-    const atMatch = decodeURIComponent(url.href).match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    const decoded = decodeURIComponent(url.href);
+    const atMatch = decoded.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
     if (atMatch) {
       const latitude = normalizeCoordinate(atMatch[1]);
       const longitude = normalizeCoordinate(atMatch[2]);
+      if (areValidCoordinates(latitude, longitude)) return { latitude, longitude };
+    }
+
+    const hashMatch = decoded.match(/#map=\d+\/(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)/);
+    if (hashMatch) {
+      const latitude = normalizeCoordinate(hashMatch[1]);
+      const longitude = normalizeCoordinate(hashMatch[2]);
       if (areValidCoordinates(latitude, longitude)) return { latitude, longitude };
     }
 
@@ -60,12 +74,14 @@ export function parseCoordinatesFromGoogleMapsUrl(value) {
   return null;
 }
 
+export const parseCoordinatesFromGoogleMapsUrl = parseCoordinatesFromMapUrl;
+
 export function normalizeSavedLocationInput(data = {}) {
   const label = String(data.label || data.location_name || '').trim();
-  const rawInput = String(data.location_input || data.google_maps_url || data.coordinates || '').trim();
+  const rawInput = String(data.location_input || data.google_maps_url || data.location_url || data.coordinates || '').trim();
   const latitude = normalizeCoordinate(data.latitude);
   const longitude = normalizeCoordinate(data.longitude);
-  const urlCoords = parseCoordinatesFromGoogleMapsUrl(rawInput);
+  const urlCoords = parseCoordinatesFromMapUrl(rawInput);
   const textCoords = parseCoordinatesFromText(rawInput);
   const effectiveCoords = areValidCoordinates(latitude, longitude)
     ? { latitude, longitude }

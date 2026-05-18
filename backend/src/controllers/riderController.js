@@ -52,3 +52,12 @@ export const updateMyAvailability = asyncHandler(async (req, res) => {
   const profile = await RiderModel.updateAvailability(req.user.id, nextStatus);
   sendResponse(res, 200, "Rider availability updated", profile);
 });
+
+export const updateMyRegion = asyncHandler(async (req, res) => {
+  const region = String(req.body.region || '').trim();
+  if (!['Kathmandu', 'Bhaktapur', 'Lalitpur'].includes(region)) {
+    throw new ApiError(400, 'Invalid rider region');
+  }
+  const profile = await RiderModel.updateRegion(req.user.id, region);
+  sendResponse(res, 200, 'Rider region updated', profile);
+});

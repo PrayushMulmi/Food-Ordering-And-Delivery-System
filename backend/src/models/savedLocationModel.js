@@ -31,7 +31,7 @@ export const SavedLocationModel = {
     const normalized = normalizeSavedLocationInput(data);
     if (!normalized.label) throw new ApiError(400, 'Location name is required');
     if (!normalized.hasValidCoordinates) {
-      throw new ApiError(400, 'Enter a valid Google Maps URL or coordinates in lat,lng format');
+      throw new ApiError(400, 'Enter a valid OpenStreetMap URL or coordinates in lat,lng format');
     }
 
     await query(
@@ -64,7 +64,7 @@ export const SavedLocationModel = {
 
     if (!normalized.label) throw new ApiError(400, 'Location name is required');
     if (!normalized.hasValidCoordinates) {
-      throw new ApiError(400, 'Enter a valid Google Maps URL or coordinates in lat,lng format');
+      throw new ApiError(400, 'Enter a valid OpenStreetMap URL or coordinates in lat,lng format');
     }
 
     await query(

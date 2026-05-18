@@ -8,6 +8,7 @@ import {
   getMyAssignedOrderDetail,
   updateMyLocation,
   updateMyAvailability,
+  updateMyRegion,
 } from "../controllers/riderController.js";
 
 const router = express.Router();
@@ -17,4 +18,5 @@ router.get('/orders', listMyAssignedOrders);
 router.get('/orders/:id', getMyAssignedOrderDetail);
 router.put('/location', updateMyLocation);
 router.put('/availability', updateMyAvailability);
+router.put('/region', updateMyRegion);
 export default router;
