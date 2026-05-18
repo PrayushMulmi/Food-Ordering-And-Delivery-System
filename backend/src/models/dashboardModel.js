@@ -25,11 +25,16 @@ export const DashboardModel = {
     );
 
     const recentReviews = await query(
-      `SELECT rating, comment, created_at
-       FROM reviews
-       WHERE restaurant_id = ?
-       ORDER BY id DESC
-       LIMIT 5`,
+      `SELECT 
+     rv.rating,
+     rv.comment,
+     rv.created_at,
+     u.full_name AS customer_name
+   FROM reviews rv
+   INNER JOIN users u ON u.id = rv.user_id
+   WHERE rv.restaurant_id = ?
+   ORDER BY rv.id DESC
+   LIMIT 5`,
       [restaurantId],
     );
 
