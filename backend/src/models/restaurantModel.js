@@ -2,6 +2,22 @@ import { query } from "../config/db.js";
 import { generateRestaurantCode } from "../utils/generateOrderCode.js";
 import { normalizeCoordinate, parseCoordinatesFromMapUrl, parseCoordinatesFromText } from "../utils/location.js";
 
+
+const PRICE_LEVELS = ['Low', 'Medium', 'High'];
+
+export function normalizePriceLevel(value) {
+  const raw = String(value || '').trim();
+  const map = {
+    '$': 'Low',
+    '$$': 'Medium',
+    '$$$': 'High',
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High',
+  };
+  return map[raw] || map[raw.toLowerCase()] || 'Medium';
+}
+
 const parseGallery = (value) => {
   if (!value) return [];
   if (Array.isArray(value)) return value;
@@ -16,8 +32,8 @@ function normalizeRestaurantLocation(data = {}) {
   const parsed = parseCoordinatesFromMapUrl(rawInput) || parseCoordinatesFromText(rawInput);
   return {
     restaurant_location_url: rawInput || null,
-    latitude: latitude ?? parsed?.latitude ?? null,
-    longitude: longitude ?? parsed?.longitude ?? null,
+    latitude: latitude ?? parsed?.lat ?? parsed?.latitude ?? null,
+    longitude: longitude ?? parsed?.lng ?? parsed?.longitude ?? null,
   };
 }
 
@@ -40,6 +56,8 @@ export const RestaurantModel = {
     if (!row) return null;
     return {
       ...row,
+      price_level: normalizePriceLevel(row.price_level),
+      is_open: Number(row.is_open) === 1,
       gallery_images: parseGallery(row.gallery_images),
       latitude: row.latitude == null ? null : Number(row.latitude),
       longitude: row.longitude == null ? null : Number(row.longitude),
@@ -64,8 +82,8 @@ export const RestaurantModel = {
         data.image_url || null,
         data.cover_photo_url || null,
         JSON.stringify(data.gallery_images || []),
-        data.price_level || "$$",
-        data.is_open ? 1 : 0,
+        normalizePriceLevel(data.price_level),
+        data.is_open === undefined ? 1 : (data.is_open ? 1 : 0),
         data.status || "active",
         location.restaurant_location_url,
         location.latitude,
@@ -122,7 +140,7 @@ export const RestaurantModel = {
     }
     if (filters.cuisine) { sql += ` AND r.cuisine = ?`; params.push(filters.cuisine); }
     if (filters.location) { sql += ` AND r.address = ?`; params.push(filters.location); }
-    if (filters.price_level) { sql += ` AND r.price_level = ?`; params.push(filters.price_level); }
+    if (filters.price_level) { sql += ` AND r.price_level = ?`; params.push(normalizePriceLevel(filters.price_level)); }
     if (filters.min_rating) { sql += ` AND r.rating_average >= ?`; params.push(Number(filters.min_rating)); }
     if (String(filters.open_now || '') === '1') { sql += ` AND r.is_open = 1`; }
 
@@ -130,7 +148,7 @@ export const RestaurantModel = {
     if (sort === 'newest') sql += ` ORDER BY r.created_at DESC`;
     else if (sort === 'name') sql += ` ORDER BY r.name ASC`;
     else if (sort === 'fast_delivery') sql += ` ORDER BY r.is_open DESC, r.rating_average DESC, r.created_at ASC`;
-    else if (sort === 'best_quality') sql += ` ORDER BY r.rating_average DESC, r.price_level DESC`;
+    else if (sort === 'best_quality') sql += ` ORDER BY r.rating_average DESC, FIELD(r.price_level, 'High', 'Medium', 'Low') DESC`;
     else sql += ` ORDER BY r.rating_average DESC, r.created_at DESC`;
 
     const rows = await query(sql, params);
@@ -152,7 +170,7 @@ export const RestaurantModel = {
         data.image_url || null,
         data.cover_photo_url || null,
         JSON.stringify(data.gallery_images || []),
-        data.price_level || "$$",
+        normalizePriceLevel(data.price_level),
         data.is_open ? 1 : 0,
         location.restaurant_location_url,
         location.latitude,
@@ -193,7 +211,18 @@ export const RestaurantModel = {
   },
 
   async updateStatus(id, status) {
-    await query(`UPDATE restaurants SET status = ? WHERE id = ?`, [status, id]);
+    const normalizedStatus = String(status || '').toLowerCase() === 'suspended' ? 'suspended' : 'active';
+    await query(
+      `UPDATE restaurants
+       SET status = ?, is_open = CASE WHEN ? = 'suspended' THEN 0 ELSE is_open END
+       WHERE id = ?`,
+      [normalizedStatus, normalizedStatus, id],
+    );
+    return this.findById(id);
+  },
+
+  async updateOpenStatus(id, isOpen) {
+    await query(`UPDATE restaurants SET is_open = ? WHERE id = ?`, [isOpen ? 1 : 0, id]);
     return this.findById(id);
   },
 
@@ -213,7 +242,7 @@ export const RestaurantModel = {
     return {
       cuisines: cuisines.map((row) => row.cuisine),
       locations: locations.map((row) => row.address),
-      price_levels: ['$', '$$', '$$$'],
+      price_levels: PRICE_LEVELS,
       sorts: [
         { value: 'top_rated', label: 'Top Rated' },
         { value: 'fast_delivery', label: 'Fast Delivery' },

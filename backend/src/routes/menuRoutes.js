@@ -6,10 +6,12 @@ import {
   createMenuItem,
   updateMenuItem,
   deleteMenuItem,
+  getMenuItemImage,
 } from "../controllers/menuController.js";
 
 const router = express.Router();
 
+router.get("/:id/image", getMenuItemImage);
 router.post("/", protect, allowRoles(ROLES.RESTAURANT_ADMIN), createMenuItem);
 router.put("/:id", protect, allowRoles(ROLES.RESTAURANT_ADMIN), updateMenuItem);
 router.delete(
