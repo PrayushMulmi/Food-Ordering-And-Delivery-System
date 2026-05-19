@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Badge, Button, ImageWithFallback, Input } from '../shared/ui';
+import { Badge, Button, ImageWithFallback } from '../shared/ui';
 import { api, fileUrl } from '../lib/api';
+import { isLoggedIn } from '../lib/auth';
 
 function readFilters(params) {
   return {
@@ -15,11 +16,32 @@ function readFilters(params) {
   };
 }
 
+function RestaurantCard({ restaurant }) {
+  return (
+    <div className="overflow-hidden rounded-3xl border bg-white shadow-sm">
+      <div className="h-48 bg-gray-100">
+        <ImageWithFallback src={fileUrl(restaurant.cover_photo_url || restaurant.image_url)} alt={restaurant.name} className="h-full w-full object-cover" />
+      </div>
+      <div className="p-6">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div><h2 className="text-xl font-semibold">{restaurant.name}</h2><p className="text-gray-600">{restaurant.cuisine}</p></div>
+          <Badge>{Number(restaurant.rating_average || 0).toFixed(1)}★</Badge>
+        </div>
+        <p className="mb-4 line-clamp-2 text-sm text-gray-600">{restaurant.description || 'Fresh meals prepared daily.'}</p>
+        <div className="mb-5 flex flex-wrap gap-2 text-sm text-gray-500"><span>{restaurant.address}</span><span>•</span><span>{restaurant.price_level}</span><span>•</span><span className={restaurant.is_open ? 'font-semibold text-[#16A34A]' : 'font-semibold text-red-600'}>{restaurant.is_open ? 'Open' : 'Closed'}</span></div>
+        {restaurant.recommendation_reason && <p className="mb-4 rounded-2xl bg-[#f0fdf4] px-3 py-2 text-xs font-medium text-[#166534]">{restaurant.recommendation_reason}</p>}
+        <Button asChild className="w-full"><Link to={`/restaurant/${restaurant.restaurant_code}`}>View menu</Link></Button>
+      </div>
+    </div>
+  );
+}
+
 export function Restaurants() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [restaurants, setRestaurants] = useState([]);
+  const [recommended, setRecommended] = useState([]);
   const [filters, setFilters] = useState(() => readFilters(searchParams));
-  const [filterOptions, setFilterOptions] = useState({ cuisines: [], locations: [], price_levels: ['$', '$$', '$$$'] });
+  const [filterOptions, setFilterOptions] = useState({ cuisines: [], locations: [], price_levels: ['Low', 'Medium', 'High'] });
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -34,6 +56,9 @@ export function Restaurants() {
 
   useEffect(() => {
     api.get('/api/restaurants/filters').then((res) => setFilterOptions(res.data || {})).catch(() => {});
+    if (isLoggedIn()) {
+      api.get('/api/restaurants/recommended/me').then((res) => setRecommended(res.data || [])).catch(() => setRecommended([]));
+    }
   }, []);
 
   useEffect(() => {
@@ -50,8 +75,22 @@ export function Restaurants() {
         </div>
         <div className="rounded-2xl bg-[#f0fdf4] px-4 py-3 text-sm text-gray-700">Showing <span className="font-semibold">{restaurants.length}</span> restaurants</div>
       </div>
-      <div className="mb-8 grid gap-4 rounded-3xl border bg-white p-5 lg:grid-cols-6">
-        <Input placeholder="Search restaurants or menu items" value={filters.search} onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))} />
+
+      {recommended.length > 0 && (
+        <section className="mb-10 rounded-3xl border bg-white p-5 shadow-sm">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-semibold">Recommended For You</h2>
+              <p className="text-sm text-gray-600">Based on your order history, restaurant choices, and ratings.</p>
+            </div>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {recommended.slice(0, 6).map((restaurant) => <RestaurantCard key={restaurant.id} restaurant={restaurant} />)}
+          </div>
+        </section>
+      )}
+
+      <div className="mb-8 grid gap-4 rounded-3xl border bg-white p-5 lg:grid-cols-5">
         <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={filters.cuisine} onChange={(e) => setFilters((p) => ({ ...p, cuisine: e.target.value }))}><option value="">All cuisines</option>{(filterOptions.cuisines || []).map((item) => <option key={item} value={item}>{item}</option>)}</select>
         <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={filters.location} onChange={(e) => setFilters((p) => ({ ...p, location: e.target.value }))}><option value="">All locations</option>{(filterOptions.locations || []).map((item) => <option key={item} value={item}>{item}</option>)}</select>
         <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={filters.price_level} onChange={(e) => setFilters((p) => ({ ...p, price_level: e.target.value }))}><option value="">All prices</option>{(filterOptions.price_levels || []).map((item) => <option key={item} value={item}>{item}</option>)}</select>
@@ -59,17 +98,7 @@ export function Restaurants() {
         <label className="flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm"><input type="checkbox" checked={filters.open_now === '1'} onChange={(e) => setFilters((p) => ({ ...p, open_now: e.target.checked ? '1' : '' }))} /> Open now</label>
       </div>
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {restaurants.map((restaurant) => (
-          <div key={restaurant.id} className="overflow-hidden rounded-3xl border bg-white shadow-sm">
-            <div className="h-48 bg-gray-100"><ImageWithFallback src={fileUrl(restaurant.cover_photo_url || restaurant.image_url)} alt={restaurant.name} className="h-full w-full object-cover" /></div>
-            <div className="p-6">
-              <div className="mb-3 flex items-start justify-between gap-3"><div><h2 className="text-xl font-semibold">{restaurant.name}</h2><p className="text-gray-600">{restaurant.cuisine}</p></div><Badge>{Number(restaurant.rating_average || 0).toFixed(1)}★</Badge></div>
-              <p className="mb-4 line-clamp-2 text-sm text-gray-600">{restaurant.description || 'Fresh meals prepared daily.'}</p>
-              <div className="mb-5 flex flex-wrap gap-2 text-sm text-gray-500"><span>{restaurant.address}</span><span>•</span><span>{restaurant.price_level}</span><span>•</span><span>{restaurant.is_open ? 'Open' : 'Closed'}</span></div>
-              <Button asChild className="w-full"><Link to={`/restaurant/${restaurant.id}`}>View menu</Link></Button>
-            </div>
-          </div>
-        ))}
+        {restaurants.map((restaurant) => <RestaurantCard key={restaurant.id} restaurant={restaurant} />)}
       </div>
       {!restaurants.length && (
         <div className="mt-8 rounded-3xl border bg-white p-8 text-center text-gray-600 shadow-sm">
