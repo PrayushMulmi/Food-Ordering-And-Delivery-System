@@ -1,0 +1,74 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+
+
+.print-only-bill-content {
+  display: none;
+}
+
+@media print {
+  body.printing-bill * {
+    visibility: hidden !important;
+  }
+
+  body.printing-bill .print-bill-section,
+  body.printing-bill .print-bill-section * {
+    visibility: visible !important;
+  }
+
+  html,
+  body.printing-bill {
+    width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  body.printing-bill .print-bill-section {
+    position: static !important;
+    width: 100% !important;
+    max-width: 190mm !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+    color: black !important;
+    page-break-after: avoid !important;
+    break-after: avoid-page !important;
+  }
+
+  body.printing-bill .screen-bill-content,
+  body.printing-bill .screen-bill-content * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body.printing-bill .print-only-bill-content {
+    display: block !important;
+    page-break-after: avoid !important;
+    break-after: avoid-page !important;
+  }
+
+  body.printing-bill .print-only-bill-content table,
+  body.printing-bill .print-only-bill-content th,
+  body.printing-bill .print-only-bill-content td {
+    border-color: #111827 !important;
+  }
+
+  .order-tracking-page,
+  .order-tracking-page > div,
+  main,
+  #root {
+    min-height: 0 !important;
+    height: auto !important;
+  }
+
+  @page {
+    margin: 10mm;
+    size: auto;
+  }
+}
