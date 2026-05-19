@@ -4,6 +4,8 @@ import { Button, Input, Textarea } from '../shared/ui';
 import { createOrder } from '../controllers/orderController';
 import { api } from '../lib/api';
 import { toast } from 'sonner';
+import { GoogleMapPicker } from '../components/GoogleMapPicker';
+import { parseCoordinatesFromGoogleMapsUrl, parseCoordinatesFromText } from '../utils/location';
 
 const DELIVERY_FEE = 70;
 
@@ -29,10 +31,30 @@ function normalizePricing(data, subtotalFallback = 0) {
   };
 }
 
+function extractSavedLocationCoordinates(location) {
+  return parseCoordinatesFromGoogleMapsUrl(location?.google_maps_url || location?.location_input) || parseCoordinatesFromText(location?.location_input) || (location?.latitude != null && location?.longitude != null ? { lat: Number(location.latitude), lng: Number(location.longitude) } : null);
+}
+
+function getSavedLocationAddress(location) {
+  const label = String(location?.label || '').trim();
+  const detail = String(location?.location_input || location?.google_maps_url || '').trim();
+  if (detail && !/^https?:\/\//i.test(detail)) return label ? `${label} - ${detail}` : detail;
+  return label || detail;
+}
+
+function formatPinnedMapAddress(coords) {
+  const lat = Number(coords?.lat);
+  const lng = Number(coords?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '';
+  return `Pinned map location (${lat.toFixed(7)}, ${lng.toFixed(7)})`;
+}
+
 export function OrderCheckout() {
   const navigate = useNavigate();
   const [basket, setBasket] = useState({ items: [] });
-  const [form, setForm] = useState({ delivery_address: '', notes: '' });
+  const [savedLocations, setSavedLocations] = useState([]);
+  const [selectedSavedLocationId, setSelectedSavedLocationId] = useState('');
+  const [form, setForm] = useState({ delivery_address: '', notes: '', delivery_latitude: '', delivery_longitude: '' });
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [pricing, setPricing] = useState(getDefaultPricing());
@@ -55,9 +77,13 @@ export function OrderCheckout() {
   useEffect(() => {
     const initializeCheckout = async () => {
       try {
-        const basketRes = await api.get('/api/basket');
+        const [basketRes, profileRes] = await Promise.all([
+          api.get('/api/basket'),
+          api.get('/api/auth/me').catch(() => ({ data: {} })),
+        ]);
         const nextBasket = basketRes.data || { items: [] };
         setBasket(nextBasket);
+        setSavedLocations(profileRes?.data?.saved_locations || []);
         setPricing(getDefaultPricing(nextBasket.subtotal || 0));
 
         if (nextBasket.items?.length) {
@@ -123,8 +149,51 @@ export function OrderCheckout() {
     }
   };
 
+  const applySavedLocation = (id) => {
+    setSelectedSavedLocationId(id);
+    const selected = savedLocations.find((item) => String(item.id) === String(id));
+
+    if (!selected) {
+      setForm((prev) => ({ ...prev, delivery_latitude: '', delivery_longitude: '' }));
+      return;
+    }
+
+    const coords = extractSavedLocationCoordinates(selected);
+    setForm((prev) => ({
+      ...prev,
+      delivery_address: getSavedLocationAddress(selected),
+      delivery_latitude: coords?.lat ?? '',
+      delivery_longitude: coords?.lng ?? '',
+    }));
+  };
+
+  const handleMapLocationChange = (coords) => {
+    const pinnedAddress = formatPinnedMapAddress(coords);
+    setSelectedSavedLocationId('');
+    setForm((prev) => {
+      const currentAddress = String(prev.delivery_address || '').trim();
+      const shouldReplaceAddress = !currentAddress || selectedSavedLocationId || currentAddress.startsWith('Pinned map location');
+
+      return {
+        ...prev,
+        delivery_address: shouldReplaceAddress ? pinnedAddress : prev.delivery_address,
+        delivery_latitude: coords.lat,
+        delivery_longitude: coords.lng,
+      };
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.delivery_address.trim()) {
+      toast.error('Delivery address is required');
+      return;
+    }
+    if (!form.delivery_latitude || !form.delivery_longitude) {
+      toast.error('Please place the delivery pin on the map');
+      return;
+    }
+
     setPlacing(true);
     try {
       const order = await createOrder({
@@ -133,7 +202,7 @@ export function OrderCheckout() {
         delivery_fee: pricing.delivery_fee,
       });
       toast.success('Order placed successfully');
-      navigate(`/order/${order.data.id}`);
+      navigate(`/order/${order.data.order_code}`);
     } catch (error) {
       toast.error(error.message || 'Could not place order');
     } finally {
@@ -149,8 +218,22 @@ export function OrderCheckout() {
       <form onSubmit={handleSubmit} className="rounded-3xl border bg-white p-6 shadow-sm">
         <h1 className="mb-6 text-4xl font-bold">Checkout</h1>
         <div className="space-y-4">
-          <Input placeholder="Delivery address" className="h-12" value={form.delivery_address} onChange={(e) => setForm((p) => ({ ...p, delivery_address: e.target.value }))} required />
+          {savedLocations.length ? (
+            <select className="h-12 w-full rounded-md border border-gray-300 px-3 text-sm" value={selectedSavedLocationId} onChange={(e) => applySavedLocation(e.target.value)}>
+              <option value="">Select a saved location</option>
+              {savedLocations.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
+            </select>
+          ) : (
+            <p className="rounded-2xl border border-dashed p-3 text-sm text-gray-500">No saved locations yet. Enter the delivery address and place the delivery pin on the map.</p>
+          )}
+          <Input placeholder="Delivery address" className="h-12" value={form.delivery_address} onChange={(e) => { setSelectedSavedLocationId(''); setForm((p) => ({ ...p, delivery_address: e.target.value })); }} required />
           <Textarea placeholder="Order notes (optional)" value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
+          <GoogleMapPicker
+            title="Delivery map location"
+            description="Zoom in/out and click the map to place your delivery pin. The address field is auto-filled for map-selected locations."
+            value={{ lat: form.delivery_latitude, lng: form.delivery_longitude }}
+            onChange={handleMapLocationChange}
+          />
         </div>
         <Button type="submit" disabled={placing} className="mt-6 w-full">{placing ? 'Placing order...' : 'Confirm order'}</Button>
       </form>
