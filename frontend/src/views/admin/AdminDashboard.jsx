@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Star } from "lucide-react";
-import { Badge } from "../../shared/ui";
+import { Badge, Button } from "../../shared/ui";
 import { api } from "../../lib/api";
+import { toast } from "sonner";
 
 export function AdminDashboard() {
   const [restaurant, setRestaurant] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [activeCoupons, setActiveCoupons] = useState([]);
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -53,6 +55,33 @@ export function AdminDashboard() {
 
   const bestsellers = dashboard?.topItems || [];
   const recentReviews = dashboard?.recentReviews || [];
+  const restaurantSuspended = String(restaurant?.status || '').toLowerCase() === 'suspended';
+
+  const toggleRestaurantStatus = async () => {
+    if (!restaurant) return;
+    if (restaurantSuspended) {
+      toast.error('This restaurant is suspended. Open/close status cannot be changed until SuperAdmin restores it.');
+      return;
+    }
+    setStatusUpdating(true);
+    try {
+      let res;
+      const nextOpen = !restaurant.is_open;
+      try {
+        res = await api.put('/api/restaurant-admin/restaurant/status', { is_open: nextOpen });
+      } catch (statusRouteError) {
+        if (!/route not found/i.test(statusRouteError.message || '')) throw statusRouteError;
+        res = await api.put('/api/restaurant-admin/restaurant', { ...restaurant, is_open: nextOpen });
+      }
+      setRestaurant(res.data || { ...restaurant, is_open: nextOpen });
+      toast.success(`Restaurant is now ${(res.data || { is_open: nextOpen })?.is_open ? 'open' : 'closed'}`);
+    } catch (error) {
+      toast.error(error.message || 'Could not update restaurant status');
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
   const currentDate = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -68,9 +97,23 @@ export function AdminDashboard() {
         <p className="mb-4 text-sm text-gray-600">
           {restaurant?.address || "No address added yet"}
         </p>
-        <Badge className="bg-[#16A34A] px-4 py-2 text-white">
-          {currentDate}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge className="bg-[#16A34A] px-4 py-2 text-white">
+            {currentDate}
+          </Badge>
+          <Badge className={restaurantSuspended ? 'bg-red-600 px-4 py-2 text-white' : restaurant?.is_open ? 'bg-[#22C55E] px-4 py-2 text-white' : 'bg-gray-700 px-4 py-2 text-white'}>
+            {restaurantSuspended ? 'Suspended' : restaurant?.is_open ? 'Open' : 'Closed'}
+          </Badge>
+          <Button type="button" variant="outline" onClick={toggleRestaurantStatus} disabled={!restaurant || statusUpdating || restaurantSuspended}>
+            {restaurantSuspended ? 'Status locked' : statusUpdating ? 'Updating...' : restaurant?.is_open ? 'Close restaurant' : 'Open restaurant'}
+          </Button>
+        </div>
+        {restaurantSuspended && (
+          <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">
+            <p className="font-semibold">Restaurant suspended</p>
+            <p className="mt-1">Your restaurant is currently suspended by SuperAdmin. Restaurant management actions, menu changes, order updates, and open/close status changes are disabled until the restaurant is restored.</p>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">

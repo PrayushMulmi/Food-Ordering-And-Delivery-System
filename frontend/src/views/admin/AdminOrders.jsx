@@ -22,6 +22,8 @@ export function AdminOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [restaurant, setRestaurant] = useState(null);
+  const restaurantSuspended = String(restaurant?.status || "").toLowerCase() === "suspended";
 
   const loadOrders = async () => {
     try {
@@ -32,7 +34,10 @@ export function AdminOrders() {
     }
   };
 
-  useEffect(() => { loadOrders(); }, []);
+  useEffect(() => {
+    loadOrders();
+    api.get('/api/restaurant-admin/restaurant').then((res) => setRestaurant(res.data || null)).catch(() => {});
+  }, []);
 
   const filteredOrders = useMemo(() => orders.filter((order) => {
     const q = searchQuery.toLowerCase();
@@ -53,6 +58,10 @@ export function AdminOrders() {
   const moveNext = async (order) => {
     const nextStatus = getNextStatus(order.status);
     if (!nextStatus) return;
+    if (restaurantSuspended) {
+      toast.error('Restaurant is suspended. Order updates are disabled.');
+      return;
+    }
     try {
       await api.put(`/api/restaurant-admin/orders/${order.id}/status`, { status: nextStatus });
       toast.success(`Order moved to ${labelStatus(nextStatus)}`);
@@ -66,12 +75,18 @@ export function AdminOrders() {
   const OrderNextButton = ({ order }) => {
     const nextStatus = getNextStatus(order.status);
     if (!nextStatus) return <Badge variant="secondary">Final</Badge>;
-    return <Button type="button" onClick={() => moveNext(order)}>Next: {labelStatus(nextStatus)}</Button>;
+    return <Button type="button" disabled={restaurantSuspended} onClick={() => moveNext(order)}>{restaurantSuspended ? "Suspended" : `Next: ${labelStatus(nextStatus)}`}</Button>;
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="mb-8 text-2xl font-semibold">Orders Management</h1>
+      {restaurantSuspended && (
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">
+          <p className="font-semibold">Restaurant suspended</p>
+          <p className="mt-1">Order status updates are disabled until SuperAdmin restores this restaurant. Existing orders remain visible for review.</p>
+        </div>
+      )}
       <div className="mb-8 rounded-lg border-2 border-gray-200 bg-white p-6">
         <div className="flex flex-col gap-4 md:flex-row">
           <div className="relative flex-1">
@@ -117,7 +132,10 @@ export function AdminOrders() {
               </div>
               <div className="space-y-2 text-sm">
                 <p><span className="font-semibold">Customer:</span> {selectedOrder.customer_name}</p>
+                <p><span className="font-semibold">Phone:</span> {selectedOrder.customer_phone || '-'}</p>
+                <p><span className="font-semibold">Email:</span> {selectedOrder.customer_email || '-'}</p>
                 <p><span className="font-semibold">Location:</span> {selectedOrder.delivery_address}</p>
+                <p><span className="font-semibold">Customer note:</span> {selectedOrder.notes?.trim() || 'No customer note added.'}</p>
                 <p><span className="font-semibold">Status:</span> {labelStatus(selectedOrder.status)}</p>
                 <p><span className="font-semibold">Discount:</span> Rs. {Number(selectedOrder.discount_amount || 0).toFixed(2)}</p>
               </div>
@@ -129,6 +147,7 @@ export function AdminOrders() {
                   </div>
                 ))}
                 <div className="flex items-center justify-between"><span>Subtotal</span><span>Rs. {Number(selectedOrder.subtotal || 0).toFixed(2)}</span></div>
+                <div className="flex items-center justify-between"><span>Delivery fee</span><span>Rs. {Number(selectedOrder.delivery_fee || 0).toFixed(2)}</span></div>
                 <div className="flex items-center justify-between font-semibold"><span>Total</span><span>Rs. {Number(selectedOrder.final_total || 0).toFixed(2)}</span></div>
               </div>
             </>
