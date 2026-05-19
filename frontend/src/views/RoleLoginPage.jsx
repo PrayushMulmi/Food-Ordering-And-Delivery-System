@@ -6,6 +6,10 @@ import imgLogo from '../assets/43f7673940367781fb7ec14544ebbbad91e6ffee.png';
 import { toast } from 'sonner';
 import { authenticateUser, registerUser } from '../controllers/authController';
 import { getUser, isLoggedIn } from '../lib/auth';
+import { getRoleHomePath } from '../shared/navigation';
+
+const digitsOnly = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
+const isValidPhone = (value) => /^\d{10}$/.test(String(value || ''));
 
 
 function PasswordField({ value, onChange, placeholder, className = 'h-12', required = true }) {
@@ -40,7 +44,7 @@ export function RoleLoginPage({ role = 'restaurant_admin' }) {
   const [mode, setMode] = useState(initialMode);
   const [loading, setLoading] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [registerForm, setRegisterForm] = useState({ full_name: '', email: '', phone: '', password: '', confirm_password: '', restaurant_name: '', restaurant_cuisine: '', restaurant_address: '', restaurant_description: '', price_level: '$$' });
+  const [registerForm, setRegisterForm] = useState({ full_name: '', email: '', phone: '', password: '', confirm_password: '', restaurant_name: '', restaurant_cuisine: '', restaurant_address: '', restaurant_description: '', price_level: 'Medium' });
   const roleTitle = role === 'super_admin' ? 'Super Admin' : role === 'rider' ? 'Delivery Rider' : 'Restaurant Admin';
   const successPath = role === 'super_admin' ? '/superadmin/dashboard' : role === 'rider' ? '/rider/dashboard' : '/admin/dashboard';
 
@@ -48,6 +52,7 @@ export function RoleLoginPage({ role = 'restaurant_admin' }) {
     const user = getUser();
     if (!isLoggedIn() || !user) return;
     if (user.role === role) navigate(successPath, { replace: true });
+    else navigate(getRoleHomePath(user.role), { replace: true });
   }, [navigate, role, successPath]);
 
   const subTitle = useMemo(() => role === 'super_admin' ? 'Secure access for platform administrators.' : role === 'rider' ? 'Login to manage assigned deliveries and live tracking.' : 'Login or register your restaurant account.', [role]);
@@ -70,6 +75,7 @@ export function RoleLoginPage({ role = 'restaurant_admin' }) {
   const handleRegister = async (e) => {
     e.preventDefault();
     if (role !== 'restaurant_admin') return toast.error('Self-registration is only enabled for restaurant admins.');
+    if (!isValidPhone(registerForm.phone)) return toast.error('Mobile number must be exactly 10 digits');
     if (registerForm.password !== registerForm.confirm_password) return toast.error('Passwords do not match');
     setLoading(true);
     try {
@@ -121,10 +127,15 @@ export function RoleLoginPage({ role = 'restaurant_admin' }) {
             <form onSubmit={handleRegister} className="grid gap-4 md:grid-cols-2">
               <Input placeholder="Owner full name" className="h-12" value={registerForm.full_name} onChange={(e) => setRegisterForm((p) => ({ ...p, full_name: e.target.value }))} required />
               <Input type="email" placeholder="Owner email" className="h-12" value={registerForm.email} onChange={(e) => setRegisterForm((p) => ({ ...p, email: e.target.value }))} required />
-              <Input placeholder="Phone number" className="h-12" value={registerForm.phone} onChange={(e) => setRegisterForm((p) => ({ ...p, phone: e.target.value }))} required />
+              <Input placeholder="Phone number" className="h-12" value={registerForm.phone} onChange={(e) => setRegisterForm((p) => ({ ...p, phone: digitsOnly(e.target.value) }))} maxLength={10} inputMode="numeric" pattern="\d{10}" required />
               <Input placeholder="Restaurant name" className="h-12" value={registerForm.restaurant_name} onChange={(e) => setRegisterForm((p) => ({ ...p, restaurant_name: e.target.value }))} required />
               <Input placeholder="Cuisine" className="h-12" value={registerForm.restaurant_cuisine} onChange={(e) => setRegisterForm((p) => ({ ...p, restaurant_cuisine: e.target.value }))} required />
               <Input placeholder="Address" className="h-12" value={registerForm.restaurant_address} onChange={(e) => setRegisterForm((p) => ({ ...p, restaurant_address: e.target.value }))} required />
+              <select value={registerForm.price_level} onChange={(e) => setRegisterForm((p) => ({ ...p, price_level: e.target.value }))} className="h-12 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" required>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
               <PasswordField placeholder="Password" value={registerForm.password} onChange={(e) => setRegisterForm((p) => ({ ...p, password: e.target.value }))} />
               <PasswordField placeholder="Confirm password" value={registerForm.confirm_password} onChange={(e) => setRegisterForm((p) => ({ ...p, confirm_password: e.target.value }))} />
               <textarea placeholder="Restaurant description" className="min-h-[110px] rounded-md border border-gray-300 px-3 py-2 text-sm md:col-span-2" value={registerForm.restaurant_description} onChange={(e) => setRegisterForm((p) => ({ ...p, restaurant_description: e.target.value }))} />
