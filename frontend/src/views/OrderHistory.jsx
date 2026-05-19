@@ -25,7 +25,7 @@ export function OrderHistory() {
               <div className="flex flex-wrap gap-3">
                 <Badge variant="secondary">{order.status}</Badge>
                 <Badge>Rs. {Number(order.final_total || 0).toFixed(2)}</Badge>
-                <Button variant="outline" asChild><Link to={`/order/${order.id}`}>Track order</Link></Button>
+                <Button variant="outline" asChild><Link to={`/order/${order.order_code}`}>Track order</Link></Button>
               </div>
             </div>
           </div>
