@@ -4,6 +4,7 @@ import {
   login,
   getMe,
   updateMyProfile,
+  updateMyTheme,
   changeMyPassword,
   requestPasswordReset,
   verifyPasswordResetCode,
@@ -23,6 +24,7 @@ router.post("/forgot-password/verify", verifyPasswordResetCode);
 router.post("/forgot-password/reset", resetPasswordWithCode);
 router.get("/me", protect, getMe);
 router.put("/me", protect, updateMyProfile);
+router.put("/me/theme", protect, updateMyTheme);
 router.put("/change-password", protect, changeMyPassword);
 router.get("/me/locations", protect, listMySavedLocations);
 router.post("/me/locations", protect, createMySavedLocation);

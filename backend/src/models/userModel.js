@@ -4,6 +4,12 @@ import { query } from "../config/db.js";
 const BCRYPT_PREFIX = "$2";
 
 const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
+const normalizePhone = (phone) => {
+  const value = String(phone || "").trim();
+  return value || null;
+};
+const validatePhone = (phone) => phone == null || /^\d{10}$/.test(String(phone));
+const normalizeTheme = (theme) => theme === "dark" ? "dark" : "light";
 
 const parsePreferences = (value) => {
   if (!value) return [];
@@ -36,9 +42,9 @@ export const UserModel = {
         data.full_name,
         normalizeEmail(data.email),
         hashedPassword,
-        data.phone || null,
+        normalizePhone(data.phone),
         data.role || "customer",
-        data.theme || "light",
+        normalizeTheme(data.theme),
         data.food_preferences ? JSON.stringify(data.food_preferences) : null,
       ],
     );
@@ -102,20 +108,42 @@ export const UserModel = {
     return rows.length;
   },
 
-  async updateProfile(userId, data) {
+  async updateProfile(userId, data = {}) {
+    const current = await this.findById(userId);
+    if (!current) return null;
+
+    const nextPhone = Object.prototype.hasOwnProperty.call(data, "phone")
+      ? normalizePhone(data.phone)
+      : current.phone;
+
+    if (!validatePhone(nextPhone)) {
+      const error = new Error("Mobile number must be exactly 10 digits");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const nextPreferences = Object.prototype.hasOwnProperty.call(data, "food_preferences")
+      ? data.food_preferences
+      : current.food_preferences;
+
     await query(
       `UPDATE users
        SET full_name = ?, phone = ?, theme = ?, food_preferences = ?
        WHERE id = ?`,
       [
-        data.full_name,
-        data.phone || null,
-        data.theme || "light",
-        data.food_preferences ? JSON.stringify(data.food_preferences) : null,
+        String(data.full_name ?? current.full_name ?? "").trim(),
+        nextPhone,
+        normalizeTheme(data.theme ?? current.theme),
+        nextPreferences?.length ? JSON.stringify(nextPreferences) : null,
         userId,
       ],
     );
 
+    return this.findById(userId);
+  },
+
+  async updateTheme(userId, theme) {
+    await query(`UPDATE users SET theme = ? WHERE id = ?`, [normalizeTheme(theme), userId]);
     return this.findById(userId);
   },
 

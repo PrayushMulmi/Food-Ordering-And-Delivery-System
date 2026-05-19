@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { body, validationResult } from "express-validator";
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
@@ -7,15 +8,48 @@ import { sendResponse } from "../utils/response.js";
 import { UserModel } from "../models/userModel.js";
 import { RestaurantModel } from "../models/restaurantModel.js";
 import { query } from "../config/db.js";
+import { sendWhatsappOtp } from "../services/whatsappService.js";
 
 const generateToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, {
   expiresIn: process.env.JWT_EXPIRES_IN || "7d",
 });
 
 const RESET_CODE_EXPIRY_MINUTES = 10;
+const RESET_CODE_RESEND_SECONDS = 60;
 
 function generateSixDigitCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(crypto.randomInt(100000, 1000000));
+}
+
+function normalizeResetUsername(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function normalizePhoneNumber(value) {
+  return String(value || '').replace(/\D/g, '').slice(-10);
+}
+
+async function findCustomerForPasswordReset(username, phone) {
+  const identifier = normalizeResetUsername(username);
+  const normalizedPhone = normalizePhoneNumber(phone);
+  if (!identifier) throw new ApiError(400, 'Username is required');
+  if (!/^\d{10}$/.test(normalizedPhone)) throw new ApiError(400, 'Registered phone number must be exactly 10 digits');
+
+  const rows = await query(
+    `SELECT id, full_name, email, phone, status
+     FROM users
+     WHERE role = 'customer'
+       AND REPLACE(REPLACE(REPLACE(IFNULL(phone, ''), ' ', ''), '-', ''), '+977', '') = ?
+       AND (LOWER(email) = ? OR LOWER(SUBSTRING_INDEX(email, '@', 1)) = ? OR LOWER(full_name) = ?)
+     LIMIT 1`,
+    [normalizedPhone, identifier, identifier, identifier],
+  );
+
+  const user = rows[0];
+  if (!user || user.status !== 'active') {
+    throw new ApiError(404, 'Username and phone number do not match an active customer account');
+  }
+  return { ...user, phone: normalizedPhone };
 }
 
 function validatePassword(password) {
@@ -30,7 +64,11 @@ export const registerValidation = [
     .withMessage("Password must be at least 8 characters long")
     .matches(/^(?=.*[A-Za-z])(?=.*\d).+$/)
     .withMessage("Password must contain at least one letter and one number"),
-  body("phone").optional({ values: "falsy" }).trim().isLength({ min: 7, max: 30 }),
+  body("phone")
+    .optional({ values: "falsy" })
+    .trim()
+    .matches(/^\d{10}$/)
+    .withMessage("Mobile number must be exactly 10 digits"),
   body("confirm_password").optional(),
 ];
 
@@ -63,7 +101,7 @@ export const register = asyncHandler(async (req, res) => {
       cuisine: payload.restaurant_cuisine || 'Multi Cuisine',
       address: payload.restaurant_address || 'Kathmandu',
       contact_phone: payload.phone || null,
-      price_level: payload.price_level || '$$',
+      price_level: payload.price_level || 'Medium',
       image_url: payload.restaurant_image_url || null,
       region: payload.region || 'Kathmandu',
       restaurant_location_url: payload.restaurant_location_url || null,
@@ -101,8 +139,18 @@ export const getMe = asyncHandler(async (req, res) => {
 });
 
 export const updateMyProfile = asyncHandler(async (req, res) => {
+  const phone = req.body.phone;
+  if (phone !== undefined && phone !== null && String(phone).trim() && !/^\d{10}$/.test(String(phone).trim())) {
+    throw new ApiError(400, "Mobile number must be exactly 10 digits");
+  }
   const updated = await UserModel.updateProfile(req.user.id, req.body);
   sendResponse(res, 200, "Profile updated", updated);
+});
+
+export const updateMyTheme = asyncHandler(async (req, res) => {
+  const theme = req.body.theme === "dark" ? "dark" : "light";
+  const updated = await UserModel.updateTheme(req.user.id, theme);
+  sendResponse(res, 200, "Theme updated", updated);
 });
 
 export const changeMyPassword = asyncHandler(async (req, res) => {
@@ -129,78 +177,105 @@ export const changeMyPassword = asyncHandler(async (req, res) => {
 });
 
 export const requestPasswordReset = asyncHandler(async (req, res) => {
-  const phone = String(req.body.phone || '').trim();
-  if (!phone) throw new ApiError(400, 'Registered phone number is required');
+  const username = String(req.body.username || '').trim();
+  const phone = normalizePhoneNumber(req.body.phone);
+  const user = await findCustomerForPasswordReset(username, phone);
 
-  const rows = await query(
-    `SELECT id, full_name, phone, status FROM users WHERE phone = ? AND role = 'customer' LIMIT 1`,
-    [phone],
+  await query(
+    `DELETE FROM password_reset_codes WHERE expires_at <= NOW() OR used_at IS NOT NULL`,
   );
-  const user = rows[0];
-  if (!user || user.status !== 'active') {
-    throw new ApiError(404, 'No active customer account was found with this phone number');
+
+  const recentRows = await query(
+    `SELECT id FROM password_reset_codes
+     WHERE user_id = ? AND phone = ? AND used_at IS NULL AND created_at > DATE_SUB(NOW(), INTERVAL ? SECOND)
+     ORDER BY id DESC LIMIT 1`,
+    [user.id, phone, RESET_CODE_RESEND_SECONDS],
+  );
+
+  if (recentRows[0]) {
+    throw new ApiError(429, `Please wait ${RESET_CODE_RESEND_SECONDS} seconds before requesting another OTP`);
   }
 
   const code = generateSixDigitCode();
-  const codeHash = await bcrypt.hash(code, 10);
-  await query(
+  const codeHash = await bcrypt.hash(code, 12);
+  const created = await query(
     `INSERT INTO password_reset_codes (user_id, phone, code_hash, expires_at)
      VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
     [user.id, phone, codeHash, RESET_CODE_EXPIRY_MINUTES],
   );
 
-  // In production, connect an SMS gateway. The verification code is stored hashed and is not exposed in API responses.
-  sendResponse(res, 200, 'Verification code generated', {
-    reset_token_hint: 'Use the verification code sent to the registered phone number within 10 minutes.',
+  try {
+    await sendWhatsappOtp({ phone, otp: code });
+  } catch (error) {
+    console.error('WhatsApp OTP delivery failed:', error.message);
+    if (created?.insertId) {
+      await query(`DELETE FROM password_reset_codes WHERE id = ?`, [created.insertId]);
+    }
+    throw new ApiError(502, error.message || 'Could not send WhatsApp OTP');
+  }
+
+  sendResponse(res, 200, 'OTP sent to the registered WhatsApp number', {
+    expires_in_minutes: RESET_CODE_EXPIRY_MINUTES,
   });
 });
 
 export const verifyPasswordResetCode = asyncHandler(async (req, res) => {
-  const phone = String(req.body.phone || '').trim();
+  const username = String(req.body.username || '').trim();
+  const phone = normalizePhoneNumber(req.body.phone);
   const code = String(req.body.code || '').trim();
-  if (!phone || !/^\d{6}$/.test(code)) throw new ApiError(400, 'Phone number and 6-digit code are required');
+  if (!/^\d{6}$/.test(code)) throw new ApiError(400, '6-digit OTP is required');
+
+  const user = await findCustomerForPasswordReset(username, phone);
 
   const rows = await query(
     `SELECT prc.*, u.status
      FROM password_reset_codes prc
      INNER JOIN users u ON u.id = prc.user_id
-     WHERE prc.phone = ? AND prc.used_at IS NULL AND prc.expires_at > NOW()
+     WHERE prc.user_id = ? AND prc.phone = ? AND prc.used_at IS NULL AND prc.expires_at > NOW()
      ORDER BY prc.id DESC LIMIT 1`,
-    [phone],
+    [user.id, phone],
   );
   const reset = rows[0];
-  if (!reset || reset.status !== 'active') throw new ApiError(400, 'Invalid or expired verification code');
+  if (!reset || reset.status !== 'active') throw new ApiError(400, 'Invalid or expired OTP');
 
   const matched = await bcrypt.compare(code, reset.code_hash);
-  if (!matched) throw new ApiError(400, 'Invalid or expired verification code');
+  if (!matched) throw new ApiError(400, 'Invalid or expired OTP');
 
-  sendResponse(res, 200, 'Verification code accepted', { reset_id: reset.id });
+  sendResponse(res, 200, 'OTP accepted');
 });
 
 export const resetPasswordWithCode = asyncHandler(async (req, res) => {
-  const phone = String(req.body.phone || '').trim();
+  const username = String(req.body.username || '').trim();
+  const phone = normalizePhoneNumber(req.body.phone);
   const code = String(req.body.code || '').trim();
   const { new_password, confirm_password } = req.body;
 
-  if (!phone || !/^\d{6}$/.test(code)) throw new ApiError(400, 'Phone number and 6-digit code are required');
+  if (!/^\d{6}$/.test(code)) throw new ApiError(400, '6-digit OTP is required');
   if (new_password !== confirm_password) throw new ApiError(400, 'Passwords do not match');
   if (!validatePassword(new_password)) throw new ApiError(400, 'Password must be at least 8 characters and contain one letter and one number');
+
+  const user = await findCustomerForPasswordReset(username, phone);
 
   const rows = await query(
     `SELECT prc.*, u.status
      FROM password_reset_codes prc
      INNER JOIN users u ON u.id = prc.user_id
-     WHERE prc.phone = ? AND prc.used_at IS NULL AND prc.expires_at > NOW()
+     WHERE prc.user_id = ? AND prc.phone = ? AND prc.used_at IS NULL AND prc.expires_at > NOW()
      ORDER BY prc.id DESC LIMIT 1`,
-    [phone],
+    [user.id, phone],
   );
   const reset = rows[0];
-  if (!reset || reset.status !== 'active') throw new ApiError(400, 'Invalid or expired verification code');
+  if (!reset || reset.status !== 'active') throw new ApiError(400, 'Invalid or expired OTP');
 
   const matched = await bcrypt.compare(code, reset.code_hash);
-  if (!matched) throw new ApiError(400, 'Invalid or expired verification code');
+  if (!matched) throw new ApiError(400, 'Invalid or expired OTP');
 
   await UserModel.updatePassword(reset.user_id, new_password, false);
   await query(`UPDATE password_reset_codes SET used_at = CURRENT_TIMESTAMP WHERE id = ?`, [reset.id]);
+  await query(
+    `UPDATE password_reset_codes SET used_at = COALESCE(used_at, CURRENT_TIMESTAMP)
+     WHERE user_id = ? AND id <> ? AND used_at IS NULL`,
+    [reset.user_id, reset.id],
+  );
   sendResponse(res, 200, 'Password reset successfully');
 });
