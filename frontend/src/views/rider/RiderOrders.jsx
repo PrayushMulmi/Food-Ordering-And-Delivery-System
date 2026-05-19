@@ -2,9 +2,31 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import { Badge, Button } from '../../shared/ui';
 import { toast } from 'sonner';
-import { buildOpenStreetMapDirectionsUrl } from '../../utils/location';
+import { buildOpenStreetMapDirectionsUrl, parseCoordinatesFromMapUrl } from '../../utils/location';
 
 const TRACKING_INTERVAL_MS = 10000;
+
+function numericCoordinate(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function coordinatesFromPair(latValue, lngValue) {
+  const lat = numericCoordinate(latValue);
+  const lng = numericCoordinate(lngValue);
+  return lat != null && lng != null ? { lat, lng } : null;
+}
+
+function readCurrentGpsCoordinates() {
+  if (!navigator.geolocation) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 },
+    );
+  });
+}
 
 export function RiderOrders() {
   const [orders, setOrders] = useState([]);
@@ -98,13 +120,21 @@ export function RiderOrders() {
     }
   };
 
-  const openNavigation = () => {
+  const openNavigation = async () => {
     if (!selectedOrder) return;
-    const url = buildOpenStreetMapDirectionsUrl({
-      lat: selectedOrder.delivery_latitude ? Number(selectedOrder.delivery_latitude) : null,
-      lng: selectedOrder.delivery_longitude ? Number(selectedOrder.delivery_longitude) : null,
+
+    const destination = {
+      lat: numericCoordinate(selectedOrder.delivery_latitude),
+      lng: numericCoordinate(selectedOrder.delivery_longitude),
       address: selectedOrder.delivery_address,
-    });
+    };
+
+    let source = coordinatesFromPair(selectedOrder.rider_current_latitude, selectedOrder.rider_current_longitude);
+    if (!source) source = await readCurrentGpsCoordinates();
+    if (!source) source = coordinatesFromPair(selectedOrder.restaurant_latitude, selectedOrder.restaurant_longitude);
+    if (!source) source = parseCoordinatesFromMapUrl(selectedOrder.restaurant_location_url);
+
+    const url = buildOpenStreetMapDirectionsUrl(destination, source);
     if (!url) {
       toast.error('Customer location is missing or invalid');
       return;
