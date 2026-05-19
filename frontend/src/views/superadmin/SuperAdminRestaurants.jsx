@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 function DetailPanel({ restaurant, onClose }) {
   if (!restaurant) {
     return (
-      <aside className="rounded-2xl border bg-white p-6 shadow-sm">
+      <aside className="rounded-2xl border bg-white p-6 shadow-sm lg:sticky lg:top-28 lg:max-h-[calc(100vh-8rem)] lg:overflow-hidden">
         <div className="text-sm text-gray-500">
           Select a restaurant to view full details.
         </div>
@@ -15,7 +15,7 @@ function DetailPanel({ restaurant, onClose }) {
   }
 
   return (
-    <aside className="rounded-2xl border bg-white p-6 shadow-sm">
+    <aside className="rounded-2xl border bg-white p-6 shadow-sm lg:sticky lg:top-28 lg:max-h-[calc(100vh-8rem)] lg:overflow-hidden">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold">{restaurant.name}</h2>
@@ -104,8 +104,8 @@ export function SuperAdminRestaurants() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="mb-8 text-4xl font-bold">Restaurant Management</h1>
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="space-y-4">
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
+        <div className="max-h-[calc(100vh-13rem)] space-y-4 overflow-y-auto pr-2">
           {restaurants.map((restaurant) => (
             <div key={restaurant.id} className="rounded-lg border bg-white p-6 shadow-sm">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -147,4 +147,3 @@ export function SuperAdminRestaurants() {
     </div>
   );
 }
-//
