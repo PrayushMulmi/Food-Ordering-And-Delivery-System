@@ -1,0 +1,151 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 14px;
+  --background: #ffffff;
+  --foreground: #111827;
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+  --primary: #22C55E;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f4f6;
+  --secondary-foreground: #111827;
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+  --accent: #ecfdf5;
+  --accent-foreground: #166534;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: rgba(17, 24, 39, 0.12);
+  --input: #ffffff;
+  --input-background: #ffffff;
+  --switch-background: #d1d5db;
+  --font-weight-medium: 600;
+  --font-weight-normal: 400;
+  --ring: #22C55E;
+  --radius: 0.625rem;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #e5e7eb;
+  --card: #111827;
+  --card-foreground: #f9fafb;
+  --popover: #111827;
+  --popover-foreground: #f9fafb;
+  --primary: #22C55E;
+  --primary-foreground: #ffffff;
+  --secondary: #1f2937;
+  --secondary-foreground: #f9fafb;
+  --muted: #1f2937;
+  --muted-foreground: #cbd5e1;
+  --accent: #064e3b;
+  --accent-foreground: #dcfce7;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.14);
+  --input: #111827;
+  --input-background: #111827;
+  --switch-background: #374151;
+  --ring: #22C55E;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { font-size: var(--font-size); font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  body { @apply bg-background text-foreground; font-family: inherit; font-size: 14px; font-weight: 400; }
+  h1, h2, h3, h4, h5, h6 { font-weight: 600; line-height: 1.45; }
+  h1, h2, h3, h4 { font-size: 18px; }
+  p, span, label, li, td, th, input, textarea, select, button, a { font-size: 14px; }
+  small, .text-xs { font-size: 12px !important; }
+  .text-sm, .text-base { font-size: 14px !important; }
+  .text-lg, .text-xl, .text-2xl, .text-3xl, .text-4xl, .text-5xl, .text-6xl, .text-7xl { font-size: 18px !important; line-height: 1.45 !important; }
+  .font-bold, .font-semibold, .font-medium { font-weight: 600 !important; }
+}
+
+@layer components {
+  .dark body,
+  .dark .bg-white,
+  .dark .bg-gray-50,
+  .dark .bg-gray-100,
+  .dark .bg-\[\#f0fdf4\],
+  .dark .bg-\[\#dcfce7\] { background-color: var(--card) !important; color: var(--card-foreground) !important; }
+
+  .dark .text-black,
+  .dark .text-gray-900,
+  .dark .text-gray-800,
+  .dark .text-gray-700,
+  .dark .text-gray-600,
+  .dark .text-gray-500,
+  .dark .text-\[\#5b5b5b\] { color: var(--foreground) !important; }
+
+  .dark input,
+  .dark textarea,
+  .dark select { background-color: var(--input-background) !important; color: var(--foreground) !important; border-color: var(--border) !important; }
+
+  .dark .border,
+  .dark .border-t,
+  .dark .border-b,
+  .dark .border-gray-200,
+  .dark .border-gray-300 { border-color: var(--border) !important; }
+}
+
+
+@layer components {
+  .dark .landing-hero {
+    background: #000000 !important;
+    color: #ffffff !important;
+  }
+
+  .dark header,
+  .dark nav {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+  }
+
+  .dark .shadow-sm,
+  .dark .shadow-lg,
+  .dark .shadow-xl,
+  .dark .shadow-2xl {
+    box-shadow: 0 10px 28px rgba(0,0,0,0.45) !important;
+  }
+  .dark .landing-page {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+  }
+
+  .dark .landing-page .bg-gray-50,
+  .dark .landing-page .bg-white {
+    background-color: #000000 !important;
+  }
+
+}
