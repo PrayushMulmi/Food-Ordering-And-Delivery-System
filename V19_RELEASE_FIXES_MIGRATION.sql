@@ -1,0 +1,58 @@
+-- V19 release migration for Food Ordering and Delivery System
+-- Run this against the existing application database before starting the V19 backend.
+
+USE food_ordering_and_delivery_app;
+SET @db_name := DATABASE();
+
+-- Theme persistence support; harmless if already present.
+SET @sql := IF(
+  (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = @db_name AND table_name = 'users' AND column_name = 'theme') = 0,
+  'ALTER TABLE users ADD COLUMN theme VARCHAR(30) DEFAULT ''light''',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Secure WhatsApp OTP password reset storage; OTP values are hashed by the backend.
+CREATE TABLE IF NOT EXISTS password_reset_codes (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  phone VARCHAR(30) NOT NULL,
+  code_hash VARCHAR(255) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  used_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_password_reset_phone (phone),
+  INDEX idx_password_reset_user_created (user_id, created_at),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Add the user/date index for older V18 tables that may already exist without it.
+SET @sql := IF(
+  (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = @db_name AND table_name = 'password_reset_codes' AND index_name = 'idx_password_reset_user_created') = 0,
+  'CREATE INDEX idx_password_reset_user_created ON password_reset_codes (user_id, created_at)',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Restaurant open/closed status for admin-controlled availability.
+SET @sql := IF(
+  (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = @db_name AND table_name = 'restaurants' AND column_name = 'is_open') = 0,
+  'ALTER TABLE restaurants ADD COLUMN is_open TINYINT(1) DEFAULT 1',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Replace symbol price levels with customer-readable labels.
+ALTER TABLE restaurants
+  MODIFY price_level VARCHAR(20) DEFAULT 'Medium';
+
+UPDATE restaurants
+SET price_level = CASE
+  WHEN price_level = '$' THEN 'Low'
+  WHEN price_level = '$$' THEN 'Medium'
+  WHEN price_level = '$$$' THEN 'High'
+  WHEN LOWER(price_level) = 'low' THEN 'Low'
+  WHEN LOWER(price_level) = 'medium' THEN 'Medium'
+  WHEN LOWER(price_level) = 'high' THEN 'High'
+  ELSE 'Medium'
+END;
