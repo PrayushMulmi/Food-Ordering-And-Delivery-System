@@ -142,6 +142,18 @@ export function RiderOrders() {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const updateDeliveryStatus = async (status) => {
+    if (!selectedOrder) return;
+    try {
+      const res = await api.put(`/api/rider/orders/${selectedOrder.id}/status`, { status });
+      setSelectedOrder(res.data || { ...selectedOrder, status });
+      toast.success(`Order marked as ${status}`);
+      await load();
+    } catch (error) {
+      toast.error(error.message || 'Could not update delivery status');
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
@@ -179,9 +191,16 @@ export function RiderOrders() {
                 <p><span className="font-semibold">Pickup:</span> {selectedOrder.restaurant_address || '-'}</p>
                 <p><span className="font-semibold">Drop-off:</span> {selectedOrder.delivery_address}</p>
                 <p><span className="font-semibold">Delivery fee:</span> Rs. {Number(selectedOrder.delivery_fee || 0).toFixed(2)}</p>
+                <p><span className="font-semibold">Status:</span> {selectedOrder.status}</p>
                 <p><span className="font-semibold">Rider coordinates:</span> {selectedOrder.rider_current_latitude && selectedOrder.rider_current_longitude ? `${selectedOrder.rider_current_latitude}, ${selectedOrder.rider_current_longitude}` : 'Waiting for GPS update'}</p>
               </div>
               <Button type="button" className="mt-4 w-full" onClick={openNavigation}>Open customer in OpenStreetMap</Button>
+              {selectedOrder.status === 'Out for Delivery' && (
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <Button type="button" onClick={() => updateDeliveryStatus('Delivered')}>Mark Delivered</Button>
+                  <Button type="button" variant="destructive" onClick={() => updateDeliveryStatus('Delivery Failed')}>Delivery Failed</Button>
+                </div>
+              )}
             </>
           ) : <p className="text-sm text-gray-500">Select an order to view customer and delivery details.</p>}
         </aside>
