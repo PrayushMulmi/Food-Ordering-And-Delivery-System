@@ -8,6 +8,7 @@ import { getRoleHomePath } from '../shared/navigation';
 import { applyTheme } from '../lib/theme';
 import { GoogleMapPicker } from '../components/GoogleMapPicker';
 import { buildOpenStreetMapMarkerUrl } from '../utils/location';
+import { Eye, EyeOff } from 'lucide-react';
 
 const dietaryOptions = ['Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Halal', 'Spicy Lover'];
 const cuisineOptions = ['Nepali', 'Indian', 'Chinese', 'Italian', 'Japanese', 'Fast Food'];
@@ -43,6 +44,33 @@ function normalizeProfile(profile = {}) {
 }
 
 const emptyLocationForm = { label: '', location_input: '', latitude: '', longitude: '' };
+
+function PasswordField({ label, value, onChange, minLength, required = true }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div>
+      <Label>{label}</Label>
+      <div className="relative mt-2">
+        <Input
+          className="h-12 pr-11 password-no-native"
+          type={visible ? 'text' : 'password'}
+          value={value}
+          onChange={onChange}
+          minLength={minLength}
+          required={required}
+        />
+        <button
+          type="button"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#22C55E]"
+          onClick={() => setVisible((next) => !next)}
+          aria-label={visible ? 'Hide password' : 'Show password'}
+        >
+          {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function UserProfile() {
   const navigate = useNavigate();
@@ -259,9 +287,9 @@ export function UserProfile() {
           <TabsContent value="security">
             <div className="rounded-3xl border bg-white p-8 shadow-sm">
               <form onSubmit={savePassword} className="space-y-6">
-                <div><Label>Current password</Label><Input className="mt-2 h-12" type="password" value={security.current_password} onChange={(e) => setSecurity((p) => ({ ...p, current_password: e.target.value }))} required /></div>
-                <div><Label>New password</Label><Input className="mt-2 h-12" type="password" value={security.new_password} onChange={(e) => setSecurity((p) => ({ ...p, new_password: e.target.value }))} minLength={8} required /></div>
-                <div><Label>Confirm new password</Label><Input className="mt-2 h-12" type="password" value={security.confirm_password} onChange={(e) => setSecurity((p) => ({ ...p, confirm_password: e.target.value }))} minLength={8} required /></div>
+                <PasswordField label="Current password" value={security.current_password} onChange={(e) => setSecurity((p) => ({ ...p, current_password: e.target.value }))} />
+                <PasswordField label="New password" value={security.new_password} onChange={(e) => setSecurity((p) => ({ ...p, new_password: e.target.value }))} minLength={8} />
+                <PasswordField label="Confirm new password" value={security.confirm_password} onChange={(e) => setSecurity((p) => ({ ...p, confirm_password: e.target.value }))} minLength={8} />
                 <div className="flex flex-wrap gap-3">
                   <Button type="submit">Update password</Button>
                   <Button type="button" variant="destructive" onClick={() => setLogoutDialogOpen(true)}>Logout</Button>
