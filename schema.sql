@@ -3,6 +3,7 @@ USE food_ordering_and_delivery_app;
 DROP TABLE IF EXISTS rider_notifications;
 DROP TABLE IF EXISTS rider_profiles;
 DROP TABLE IF EXISTS password_reset_codes;
+DROP TABLE IF EXISTS signup_verifications;
 DROP TABLE IF EXISTS admin_action_logs;
 DROP TABLE IF EXISTS reviews;
 DROP TABLE IF EXISTS order_status_logs;
@@ -21,12 +22,16 @@ CREATE TABLE IF NOT EXISTS users (
   full_name VARCHAR(150) NOT NULL,
   email VARCHAR(150) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
-  phone VARCHAR(30) NULL,
+  phone VARCHAR(30) NULL UNIQUE,
   role ENUM('customer', 'restaurant_admin', 'super_admin', 'rider') NOT NULL DEFAULT 'customer',
   theme VARCHAR(30) DEFAULT 'light',
   food_preferences JSON NULL,
   status ENUM('active', 'suspended') DEFAULT 'active',
   force_password_change TINYINT(1) DEFAULT 0,
+  failed_login_attempts INT NOT NULL DEFAULT 0,
+  login_blocked_until TIMESTAMP NULL,
+  terms_accepted TINYINT(1) DEFAULT 0,
+  terms_accepted_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -85,6 +90,24 @@ CREATE TABLE IF NOT EXISTS user_saved_locations (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uniq_user_location_label (user_id, label),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+
+CREATE TABLE IF NOT EXISTS signup_verifications (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  full_name VARCHAR(150) NOT NULL,
+  email VARCHAR(150) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  phone VARCHAR(30) NOT NULL,
+  food_preferences JSON NULL,
+  terms_accepted TINYINT(1) NOT NULL DEFAULT 0,
+  terms_accepted_at TIMESTAMP NULL,
+  code_hash VARCHAR(255) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  used_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_signup_verification_email_phone (email, phone),
+  INDEX idx_signup_verification_phone_created (phone, created_at)
 );
 
 CREATE TABLE IF NOT EXISTS password_reset_codes (
@@ -152,7 +175,7 @@ CREATE TABLE IF NOT EXISTS orders (
   final_total DECIMAL(10,2) NOT NULL,
   delivery_address VARCHAR(255) NOT NULL,
   notes TEXT NULL,
-  status ENUM('Pending','Confirmed','Preparing','Ready for Dispatch','Out for Delivery','Delivered','Cancelled','Refunded') DEFAULT 'Pending',
+  status ENUM('Pending','Confirmed','Preparing','Ready for Dispatch','Out for Delivery','Delivered','Delivery Failed','Cancelled','Refunded') DEFAULT 'Pending',
   assigned_rider_user_id INT NULL,
   delivery_latitude DECIMAL(10,7) NULL,
   delivery_longitude DECIMAL(10,7) NULL,

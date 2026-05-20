@@ -166,3 +166,17 @@ kill -9 <PID>
 ```
 
 - A frontend pointed at an old LAN/ngrok backend will still show old route errors. Check `frontend/.env` and make sure it points to the backend you just started.
+
+---
+
+## WhatsApp OTP hotfix after V20
+
+A WhatsApp Web provider was added for local/demo sending directly from `+9779849425091`. See `V20_HOTFIX_WHATSAPP_OTP.md` for the QR setup and test commands.
+
+Validation performed for this hotfix:
+
+- `node --check` on backend source/scripts.
+- `npm run test:whatsapp` using a mock WhatsApp HTTP provider. This verified that the OTP service sends from `+9779849425091`, normalizes Nepali recipient numbers to `+977...`, and sends the short message format `Your OTP code is: 123456`.
+- Frontend production build with `npm run build`.
+
+Live WhatsApp delivery could not be completed inside this sandbox because it requires scanning the WhatsApp Web QR with the actual phone number `+9779849425091`.

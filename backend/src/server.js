@@ -3,7 +3,6 @@ dotenv.config();
 
 import app from "./app.js";
 import { pool, initializeDatabase } from "./config/db.js";
-import { initializeWhatsappOnStartup } from "./services/whatsappService.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -15,7 +14,6 @@ const startServer = async () => {
 
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Backend running on http://0.0.0.0:${PORT}`);
-      initializeWhatsappOnStartup();
     });
   } catch (error) {
     console.error("Database connection failed:", error.message);

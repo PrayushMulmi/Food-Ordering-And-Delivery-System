@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "whatsapp:qr": "node scripts/showWhatsappQr.js"
+    "test:whatsapp": "node scripts/testWhatsappOtpService.js",
+    "send:test-otp": "node scripts/sendWhatsappTest.js",
+    "whatsapp:send-test": "node scripts/sendWhatsappTest.js",
+    "whatsapp:qr": "node scripts/initWhatsappQr.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

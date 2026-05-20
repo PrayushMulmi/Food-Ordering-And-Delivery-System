@@ -24,8 +24,13 @@ export const pool = mysql.createPool({
   database: process.env.DB_NAME,
 });
 
+const sanitizeBindParams = (params = []) => {
+  if (!Array.isArray(params)) return params;
+  return params.map((value) => (value === undefined ? null : value));
+};
+
 export const query = async (sql, params = []) => {
-  const [rows] = await pool.execute(sql, params);
+  const [rows] = await pool.execute(sql, sanitizeBindParams(params));
   return rows;
 };
 
@@ -79,6 +84,16 @@ async function runMigrations(connection) {
   await ensureColumn(connection, 'orders', 'rider_current_latitude', 'rider_current_latitude DECIMAL(10,7) NULL');
   await ensureColumn(connection, 'orders', 'rider_current_longitude', 'rider_current_longitude DECIMAL(10,7) NULL');
   await ensureColumn(connection, 'orders', 'rider_location_updated_at', 'rider_location_updated_at TIMESTAMP NULL');
+  await ensureColumn(connection, 'users', 'failed_login_attempts', 'failed_login_attempts INT NOT NULL DEFAULT 0');
+  await ensureColumn(connection, 'users', 'login_blocked_until', 'login_blocked_until TIMESTAMP NULL');
+
+  try {
+    await connection.query(
+      `ALTER TABLE orders MODIFY status ENUM('Pending','Confirmed','Preparing','Ready for Dispatch','Out for Delivery','Delivered','Delivery Failed','Cancelled','Refunded') DEFAULT 'Pending'`,
+    );
+  } catch (error) {
+    console.warn('Could not update orders.status enum. Apply V21_RELEASE_FIXES_MIGRATION.sql manually if Delivery Failed is unavailable.', error.message);
+  }
 
   await ensureTable(connection, 'user_saved_locations', `
     CREATE TABLE user_saved_locations (
