@@ -495,6 +495,7 @@ export function Footer() {
             <ul className="space-y-2">
               <li><Link to="/about" className="text-gray-600 transition-colors hover:text-[#22C55E]">About Us</Link></li>
               <li><Link to="/faqs" className="text-gray-600 transition-colors hover:text-[#22C55E]">FAQs</Link></li>
+              <li><Link to="/terms-and-conditions" className="text-gray-600 transition-colors hover:text-[#22C55E]">Terms & Conditions</Link></li>
               <li><Link to="/restaurants" className="text-gray-600 transition-colors hover:text-[#22C55E]">Restaurants</Link></li>
             </ul>
           </div>

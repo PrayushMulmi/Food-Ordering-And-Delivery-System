@@ -58,3 +58,4 @@ export async function registerRequest(payload) {
   // New users are returned to the correct login portal so role checks stay explicit.
   return api.post("/api/auth/register", payload);
 }
+//

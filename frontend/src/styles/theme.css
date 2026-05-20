@@ -149,3 +149,25 @@
   }
 
 }
+
+@layer components {
+  /* Hide browser-native password reveal controls so only the app's single eye toggle is shown. */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear,
+  input.password-no-native::-ms-reveal,
+  input.password-no-native::-ms-clear,
+  input.password-no-native::-webkit-credentials-auto-fill-button {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  /* In dark mode, icon-only controls should invert to black while hovering. */
+  .dark button:hover svg,
+  .dark a:hover svg,
+  .dark [role="button"]:hover svg {
+    color: #000000 !important;
+    stroke: #000000 !important;
+  }
+}
+/* This file defines the application's color palette, typography, and other design tokens using CSS variables, and applies them globally. It also includes dark mode overrides to ensure a consistent look and feel across the application. */

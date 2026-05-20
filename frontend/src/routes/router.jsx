@@ -3,6 +3,7 @@ import { Root } from "../views/Root";
 import { LandingPage } from "../views/LandingPage";
 import { AboutUs } from "../views/AboutUs";
 import { FAQs } from "../views/FAQs";
+import { TermsAndConditions } from "../views/TermsAndConditions";
 import { LoginPage } from "../views/LoginPage";
 import { SignupPage } from "../views/SignupPage";
 import { Dashboard } from "../views/Dashboard";
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { index: true, Component: LandingPage },
       { path: "about", Component: AboutUs },
       { path: "faqs", Component: FAQs },
+      { path: "terms-and-conditions", Component: TermsAndConditions },
       { path: "login", Component: LoginPage },
       { path: "signup", Component: SignupPage },
       { path: "dashboard", Component: Dashboard },

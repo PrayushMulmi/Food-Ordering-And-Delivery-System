@@ -72,3 +72,4 @@
     size: auto;
   }
 }
+/* This file imports the application's global styles, including fonts, Tailwind CSS, and custom theme styles. It also defines print-specific styles for the bill printing feature, ensuring that the printed bill is formatted correctly and hides unnecessary elements from the screen view. The print styles are applied when the body has the class 'printing-bill', allowing for a seamless transition between screen and print views. */

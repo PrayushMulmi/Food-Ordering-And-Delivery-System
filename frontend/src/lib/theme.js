@@ -20,3 +20,4 @@ export function applyTheme(theme = 'light') {
 export function initTheme() {
   applyTheme(getStoredTheme());
 }
+//

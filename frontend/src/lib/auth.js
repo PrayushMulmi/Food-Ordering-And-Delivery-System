@@ -43,3 +43,4 @@ export function clearSession() {
 export function isLoggedIn() {
   return Boolean(getToken());
 }
+//
