@@ -10,6 +10,7 @@ import {
   verifyPasswordResetCode,
   resetPasswordWithCode,
   registerValidation,
+  verifySignupOtp,
   loginValidation,
 } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -18,6 +19,7 @@ import { listMySavedLocations, createMySavedLocation, updateMySavedLocation, del
 const router = express.Router();
 
 router.post("/register", registerValidation, register);
+router.post("/register/verify", verifySignupOtp);
 router.post("/login", loginValidation, login);
 router.post("/forgot-password/request", requestPasswordReset);
 router.post("/forgot-password/verify", verifyPasswordResetCode);

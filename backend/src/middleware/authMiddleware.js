@@ -3,6 +3,12 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import { UserModel } from "../models/userModel.js";
 
+const getTokenUserId = (decoded = {}) => {
+  const rawId = decoded.id ?? decoded.userId ?? decoded.user_id ?? decoded.sub;
+  const numericId = Number(rawId);
+  return Number.isInteger(numericId) && numericId > 0 ? numericId : null;
+};
+
 export const protect = asyncHandler(async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -14,7 +20,12 @@ export const protect = asyncHandler(async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await UserModel.findById(decoded.id);
+    const userId = getTokenUserId(decoded);
+    if (!userId) {
+      throw new ApiError(401, "Invalid token payload");
+    }
+
+    const user = await UserModel.findById(userId);
 
     if (!user) {
       throw new ApiError(401, "User not found");
@@ -27,6 +38,7 @@ export const protect = asyncHandler(async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
+    if (error instanceof ApiError) throw error;
     throw new ApiError(401, "Invalid or expired token");
   }
 });
