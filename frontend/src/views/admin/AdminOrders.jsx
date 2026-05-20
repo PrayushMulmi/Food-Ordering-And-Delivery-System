@@ -4,14 +4,13 @@ import { Search } from "lucide-react";
 import { api } from "../../lib/api";
 import { toast } from "sonner";
 
-const statusOptions = ["Pending", "Confirmed", "Preparing", "Out for Delivery", "Delivered", "Cancelled", "Refunded"];
+const statusOptions = ["Pending", "Confirmed", "Preparing", "Out for Delivery", "Delivery Failed", "Delivered", "Cancelled", "Refunded"];
 const statusLabels = { "Out for Delivery": "Dispatched" };
 const nextStatusMap = {
   Pending: "Confirmed",
   Confirmed: "Preparing",
   Preparing: "Out for Delivery",
   "Ready for Dispatch": "Out for Delivery",
-  "Out for Delivery": "Delivered",
 };
 
 const labelStatus = (status) => statusLabels[status] || status;
