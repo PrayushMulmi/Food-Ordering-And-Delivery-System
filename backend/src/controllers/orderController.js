@@ -41,6 +41,9 @@ export const restaurantOrders = asyncHandler(async (req, res) => {
 export const updateRestaurantOrderStatus = asyncHandler(async (req, res) => {
   const restaurant = await RestaurantModel.findByOwnerUserId(req.user.id);
   if (!restaurant) throw new ApiError(404, "Restaurant not found");
+  if (String(restaurant.status || '').toLowerCase() === 'suspended') {
+    throw new ApiError(403, 'Restaurant is suspended. Order updates are disabled until a SuperAdmin restores the restaurant.');
+  }
 
   const order = await OrderModel.updateStatusByRestaurant(
     req.params.id,

@@ -9,6 +9,31 @@ import { RiderModel } from "./riderModel.js";
 
 const roundMoney = (value) => Number(Number(value || 0).toFixed(2));
 
+const ADMIN_ORDER_FLOW = [
+  ORDER_STATUS.PENDING,
+  ORDER_STATUS.CONFIRMED,
+  ORDER_STATUS.PREPARING,
+  ORDER_STATUS.OUT_FOR_DELIVERY,
+];
+
+const ADMIN_TERMINAL_STATUSES = [
+  ORDER_STATUS.OUT_FOR_DELIVERY,
+  ORDER_STATUS.DELIVERED,
+  ORDER_STATUS.DELIVERY_FAILED,
+  ORDER_STATUS.CANCELLED,
+  ORDER_STATUS.REFUNDED,
+];
+
+const adminStatusLabels = {
+  [ORDER_STATUS.OUT_FOR_DELIVERY]: 'Dispatched',
+};
+
+const labelStatus = (status) => adminStatusLabels[status] || status;
+const getAdminStatusIndex = (status) => {
+  if (status === ORDER_STATUS.READY_FOR_DISPATCH) return ADMIN_ORDER_FLOW.indexOf(ORDER_STATUS.PREPARING);
+  return ADMIN_ORDER_FLOW.indexOf(status);
+};
+
 const formatCouponLabel = (coupon) => {
   if (!coupon) return null;
   if (coupon.discount_type === "percentage") {
@@ -308,12 +333,18 @@ export const OrderModel = {
 
     const currentStatus = order.status;
 
-    if ([ORDER_STATUS.CANCELLED, ORDER_STATUS.REFUNDED, ORDER_STATUS.DELIVERED].includes(currentStatus)) {
-      throw new ApiError(400, "Order status can no longer be changed");
+    if (ADMIN_TERMINAL_STATUSES.includes(currentStatus)) {
+      throw new ApiError(400, "Order status can no longer be changed by restaurant admin");
     }
 
-    if (![...ORDER_FLOW, ORDER_STATUS.CANCELLED, ORDER_STATUS.REFUNDED].includes(newStatus)) {
-      throw new ApiError(400, "Invalid order status");
+    if (!ADMIN_ORDER_FLOW.includes(newStatus)) {
+      throw new ApiError(400, "Restaurant admin can update orders only up to Dispatched");
+    }
+
+    const currentIndex = getAdminStatusIndex(currentStatus);
+    const nextIndex = ADMIN_ORDER_FLOW.indexOf(newStatus);
+    if (currentIndex === -1 || nextIndex !== currentIndex + 1) {
+      throw new ApiError(400, `Invalid status flow. Next allowed status is ${labelStatus(ADMIN_ORDER_FLOW[currentIndex + 1]) || 'not available'}`);
     }
 
     let note = "Updated by restaurant admin";
@@ -349,7 +380,7 @@ export const OrderModel = {
       [orderId, newStatus, changedByUserId, note],
     );
 
-    if ([ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED, ORDER_STATUS.REFUNDED].includes(newStatus) && assignedRiderUserId) {
+    if ([ORDER_STATUS.DELIVERED, ORDER_STATUS.DELIVERY_FAILED, ORDER_STATUS.CANCELLED, ORDER_STATUS.REFUNDED].includes(newStatus) && assignedRiderUserId) {
       await RiderModel.releaseRider(assignedRiderUserId, {
         lat: order.rider_current_latitude,
         lng: order.rider_current_longitude,

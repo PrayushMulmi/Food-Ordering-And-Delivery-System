@@ -5,6 +5,7 @@ export const ORDER_STATUS = {
   READY_FOR_DISPATCH: "Ready for Dispatch",
   OUT_FOR_DELIVERY: "Out for Delivery",
   DELIVERED: "Delivered",
+  DELIVERY_FAILED: "Delivery Failed",
   CANCELLED: "Cancelled",
   REFUNDED: "Refunded",
 };
