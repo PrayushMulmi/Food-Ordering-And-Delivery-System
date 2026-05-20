@@ -10,6 +10,7 @@ import { getUser, isLoggedIn } from '../lib/auth';
 import { api } from '../lib/api';
 
 const digitsOnly = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
+const otpDigitsOnly = (value) => String(value || '').replace(/\D/g, '').slice(0, 6);
 const isValidPhone = (value) => /^\d{10}$/.test(String(value || ''));
 
 function PasswordField({ value, onChange, placeholder, disabled, required = true }) {
@@ -19,7 +20,7 @@ function PasswordField({ value, onChange, placeholder, disabled, required = true
       <Input
         type={visible ? 'text' : 'password'}
         placeholder={placeholder}
-        className="h-11 pr-11"
+        className="h-11 pr-11 password-no-native"
         value={value}
         disabled={disabled}
         onChange={onChange}
@@ -133,7 +134,7 @@ function ForgotPasswordPanel({ onClose, onSuccess }) {
 
         {step === 'verify' && (
           <form onSubmit={verifyCode} className="space-y-4">
-            <Input placeholder="6-digit OTP" value={form.code} onChange={(e) => setForm((p) => ({ ...p, code: e.target.value.replace(/\D/g, '').slice(0, 6) }))} maxLength={6} inputMode="numeric" pattern="\d{6}" required />
+            <Input placeholder="6-digit OTP" value={form.code} onChange={(e) => setForm((p) => ({ ...p, code: otpDigitsOnly(e.target.value) }))} maxLength={6} inputMode="numeric" pattern="\d{6}" required />
             <Button type="submit" disabled={loading} className="w-full">{loading ? 'Checking...' : 'Verify OTP'}</Button>
           </form>
         )}
@@ -156,8 +157,17 @@ export function LoginPage() {
   const [activeTab, setActiveTab] = useState(location.pathname === '/signup' ? 'signup' : 'login');
   const [loading, setLoading] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [signupStep, setSignupStep] = useState('details');
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [signupForm, setSignupForm] = useState({ full_name: '', email: '', phone: '', password: '', confirm_password: '' });
+  const [signupForm, setSignupForm] = useState({
+    full_name: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirm_password: '',
+    terms_accepted: false,
+    otp_code: '',
+  });
 
   const redirectPath = useMemo(() => location.state?.from || '/dashboard', [location.state]);
 
@@ -182,20 +192,57 @@ export function LoginPage() {
     }
   };
 
-  const handleSignup = async (e) => {
-    e.preventDefault();
+  const requestSignupOtp = async () => {
     if (!isValidPhone(signupForm.phone)) {
-      return toast.error('Mobile number must be exactly 10 digits', { duration: 5000 });
+      throw new Error('Mobile number must be exactly 10 digits');
     }
     if (signupForm.password !== signupForm.confirm_password) {
-      return toast.error('Passwords do not match', { duration: 5000 });
+      throw new Error('Passwords do not match');
     }
+    if (!signupForm.terms_accepted) {
+      throw new Error('Please accept the Terms & Conditions before signing up');
+    }
+
+    await registerUser({
+      full_name: signupForm.full_name,
+      email: signupForm.email,
+      phone: signupForm.phone,
+      password: signupForm.password,
+      confirm_password: signupForm.confirm_password,
+      terms_accepted: signupForm.terms_accepted,
+      role: 'customer',
+      food_preferences: [],
+    });
+  };
+
+  const verifySignupOtp = async () => {
+    if (!/^\d{6}$/.test(signupForm.otp_code)) {
+      throw new Error('Please enter the 6-digit OTP sent to your WhatsApp');
+    }
+
+    await api.post('/api/auth/register/verify', {
+      email: signupForm.email,
+      phone: signupForm.phone,
+      code: signupForm.otp_code,
+    });
+  };
+
+  const handleSignup = async (e) => {
+    e.preventDefault();
     setLoading(true);
     try {
-      await registerUser({ ...signupForm, role: 'customer', food_preferences: [] });
-      toast.success('Account created successfully. Please log in.', { duration: 5000 });
+      if (signupStep === 'details') {
+        await requestSignupOtp();
+        setSignupStep('otp');
+        toast.success('OTP sent to your WhatsApp number. Enter it to complete signup.', { duration: 5000 });
+        return;
+      }
+
+      await verifySignupOtp();
+      toast.success('Account verified successfully. Please log in.', { duration: 5000 });
       setLoginForm((p) => ({ ...p, email: signupForm.email }));
-      setSignupForm({ full_name: '', email: '', phone: '', password: '', confirm_password: '' });
+      setSignupForm({ full_name: '', email: '', phone: '', password: '', confirm_password: '', terms_accepted: false, otp_code: '' });
+      setSignupStep('details');
       setActiveTab('login');
       navigate('/login', { replace: true });
     } catch (error) {
@@ -228,12 +275,43 @@ export function LoginPage() {
             <h2 className="mb-1 text-3xl font-bold text-black">Create account</h2>
             <p className="mb-4 text-black/80">Join Annaya and start ordering.</p>
             <form onSubmit={handleSignup} className="space-y-3">
-              <Input placeholder="Full name" className="h-11 bg-white" value={signupForm.full_name} onChange={(e) => setSignupForm((p) => ({ ...p, full_name: e.target.value }))} required />
-              <Input type="email" placeholder="Email address" className="h-11 bg-white" value={signupForm.email} onChange={(e) => setSignupForm((p) => ({ ...p, email: e.target.value }))} required />
-              <Input type="tel" placeholder="Phone number" className="h-11 bg-white" value={signupForm.phone} onChange={(e) => setSignupForm((p) => ({ ...p, phone: digitsOnly(e.target.value) }))} maxLength={10} inputMode="numeric" pattern="\d{10}" required />
-              <PasswordField placeholder="Password" value={signupForm.password} onChange={(e) => setSignupForm((p) => ({ ...p, password: e.target.value }))} disabled={signupDisabled} />
-              <PasswordField placeholder="Confirm password" value={signupForm.confirm_password} onChange={(e) => setSignupForm((p) => ({ ...p, confirm_password: e.target.value }))} disabled={signupDisabled} />
-              <Button type="submit" disabled={loading} className="h-11 w-full bg-black text-white hover:bg-gray-800">{loading && activeTab === 'signup' ? 'Please wait...' : 'Create account'}</Button>
+              {signupStep === 'details' ? (
+                <>
+                  <Input placeholder="Full name" className="h-11 bg-white" value={signupForm.full_name} onChange={(e) => setSignupForm((p) => ({ ...p, full_name: e.target.value }))} required />
+                  <Input type="email" placeholder="Email address" className="h-11 bg-white" value={signupForm.email} onChange={(e) => setSignupForm((p) => ({ ...p, email: e.target.value }))} required />
+                  <Input type="tel" placeholder="Phone number" className="h-11 bg-white" value={signupForm.phone} onChange={(e) => setSignupForm((p) => ({ ...p, phone: digitsOnly(e.target.value) }))} maxLength={10} inputMode="numeric" pattern="\d{10}" required />
+                  <PasswordField placeholder="Password" value={signupForm.password} onChange={(e) => setSignupForm((p) => ({ ...p, password: e.target.value }))} disabled={signupDisabled} />
+                  <PasswordField placeholder="Confirm password" value={signupForm.confirm_password} onChange={(e) => setSignupForm((p) => ({ ...p, confirm_password: e.target.value }))} disabled={signupDisabled} />
+                  <label className="flex items-start gap-3 rounded-2xl bg-white/90 p-3 text-sm font-medium text-black">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 accent-black"
+                      checked={signupForm.terms_accepted}
+                      onChange={(e) => setSignupForm((p) => ({ ...p, terms_accepted: e.target.checked }))}
+                      required
+                    />
+                    <span>
+                      I accept the{' '}
+                      <Link to="/terms-and-conditions" className="font-bold underline underline-offset-2" target="_blank" rel="noreferrer">
+                        Terms & Conditions
+                      </Link>
+                    </span>
+                  </label>
+                  <Button type="submit" disabled={loading} className="h-11 w-full bg-black text-white hover:bg-gray-800">{loading && activeTab === 'signup' ? 'Sending OTP...' : 'Send WhatsApp OTP'}</Button>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-2xl bg-white/90 p-4 text-sm text-black">
+                    <p className="font-semibold">Verify your phone number</p>
+                    <p className="mt-1">Enter the 6-digit OTP sent to WhatsApp number <strong>{signupForm.phone}</strong>.</p>
+                  </div>
+                  <Input placeholder="6-digit OTP" className="h-11 bg-white" value={signupForm.otp_code} onChange={(e) => setSignupForm((p) => ({ ...p, otp_code: otpDigitsOnly(e.target.value) }))} maxLength={6} inputMode="numeric" pattern="\d{6}" required />
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" disabled={loading} onClick={() => setSignupStep('details')} className="h-11 bg-white text-black hover:bg-gray-100">Edit details</Button>
+                    <Button type="submit" disabled={loading} className="h-11 flex-1 bg-black text-white hover:bg-gray-800">{loading ? 'Verifying...' : 'Verify & create account'}</Button>
+                  </div>
+                </>
+              )}
             </form>
           </fieldset>
 
