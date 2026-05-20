@@ -4,6 +4,15 @@ import { normalizeCoordinate, parseCoordinatesFromMapUrl, parseCoordinatesFromTe
 
 
 const PRICE_LEVELS = ['Low', 'Medium', 'High'];
+const normalizeId = (id) => {
+  const numericId = Number(id);
+  return Number.isInteger(numericId) && numericId > 0 ? numericId : null;
+};
+const invalidRestaurantIdError = () => {
+  const error = new Error("Invalid restaurant record");
+  error.statusCode = 400;
+  return error;
+};
 
 export function normalizePriceLevel(value) {
   const raw = String(value || '').trim();
@@ -95,7 +104,9 @@ export const RestaurantModel = {
   },
 
   async findById(id) {
-    const rows = await query(`SELECT ${publicColumns} FROM restaurants WHERE id = ? LIMIT 1`, [id]);
+    const restaurantId = normalizeId(id);
+    if (!restaurantId) return null;
+    const rows = await query(`SELECT ${publicColumns} FROM restaurants WHERE id = ? LIMIT 1`, [restaurantId]);
     return this.normalize(rows[0] || null);
   },
 
@@ -110,7 +121,9 @@ export const RestaurantModel = {
   },
 
   async findByOwnerUserId(ownerUserId) {
-    const rows = await query(`SELECT ${publicColumns} FROM restaurants WHERE owner_user_id = ? LIMIT 1`, [ownerUserId]);
+    const normalizedOwnerUserId = normalizeId(ownerUserId);
+    if (!normalizedOwnerUserId) return null;
+    const rows = await query(`SELECT ${publicColumns} FROM restaurants WHERE owner_user_id = ? LIMIT 1`, [normalizedOwnerUserId]);
     return this.normalize(rows[0] || null);
   },
 
@@ -156,6 +169,8 @@ export const RestaurantModel = {
   },
 
   async update(id, data) {
+    const restaurantId = normalizeId(id);
+    if (!restaurantId) throw invalidRestaurantIdError();
     const location = normalizeRestaurantLocation(data);
     await query(
       `UPDATE restaurants
@@ -176,13 +191,15 @@ export const RestaurantModel = {
         location.latitude,
         location.longitude,
         data.region || "Kathmandu",
-        id,
+        restaurantId,
       ],
     );
-    return this.findById(id);
+    return this.findById(restaurantId);
   },
 
   async updateImages(id, images = {}) {
+    const restaurantId = normalizeId(id);
+    if (!restaurantId) throw invalidRestaurantIdError();
     const fields = [];
     const params = [];
     if (images.logo) {
@@ -193,10 +210,10 @@ export const RestaurantModel = {
       fields.push('cover_photo_blob = ?', 'cover_photo_mime = ?', 'cover_photo_url = NULL');
       params.push(images.cover.buffer, images.cover.mime);
     }
-    if (!fields.length) return this.findById(id);
-    params.push(id);
+    if (!fields.length) return this.findById(restaurantId);
+    params.push(restaurantId);
     await query(`UPDATE restaurants SET ${fields.join(', ')} WHERE id = ?`, params);
-    return this.findById(id);
+    return this.findById(restaurantId);
   },
 
   async getImageByCode(code, kind = 'logo') {
@@ -211,19 +228,23 @@ export const RestaurantModel = {
   },
 
   async updateStatus(id, status) {
+    const restaurantId = normalizeId(id);
+    if (!restaurantId) throw invalidRestaurantIdError();
     const normalizedStatus = String(status || '').toLowerCase() === 'suspended' ? 'suspended' : 'active';
     await query(
       `UPDATE restaurants
        SET status = ?, is_open = CASE WHEN ? = 'suspended' THEN 0 ELSE is_open END
        WHERE id = ?`,
-      [normalizedStatus, normalizedStatus, id],
+      [normalizedStatus, normalizedStatus, restaurantId],
     );
-    return this.findById(id);
+    return this.findById(restaurantId);
   },
 
   async updateOpenStatus(id, isOpen) {
-    await query(`UPDATE restaurants SET is_open = ? WHERE id = ?`, [isOpen ? 1 : 0, id]);
-    return this.findById(id);
+    const restaurantId = normalizeId(id);
+    if (!restaurantId) throw invalidRestaurantIdError();
+    await query(`UPDATE restaurants SET is_open = ? WHERE id = ?`, [isOpen ? 1 : 0, restaurantId]);
+    return this.findById(restaurantId);
   },
 
   async permanentDelete(id) {
