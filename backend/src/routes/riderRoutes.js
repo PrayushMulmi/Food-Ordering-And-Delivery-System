@@ -6,6 +6,7 @@ import {
   getRiderDashboard,
   listMyAssignedOrders,
   getMyAssignedOrderDetail,
+  updateMyAssignedOrderStatus,
   updateMyLocation,
   updateMyAvailability,
   updateMyRegion,
@@ -16,6 +17,7 @@ router.use(protect, allowRoles(ROLES.RIDER));
 router.get('/dashboard', getRiderDashboard);
 router.get('/orders', listMyAssignedOrders);
 router.get('/orders/:id', getMyAssignedOrderDetail);
+router.put('/orders/:id/status', updateMyAssignedOrderStatus);
 router.put('/location', updateMyLocation);
 router.put('/availability', updateMyAvailability);
 router.put('/region', updateMyRegion);

@@ -20,6 +20,16 @@ export const getMyAssignedOrderDetail = asyncHandler(async (req, res) => {
   sendResponse(res, 200, "Rider order detail fetched", order);
 });
 
+
+export const updateMyAssignedOrderStatus = asyncHandler(async (req, res) => {
+  const nextStatus = String(req.body.status || '').trim();
+  if (!['Delivered', 'Delivery Failed'].includes(nextStatus)) {
+    throw new ApiError(400, 'Rider can only choose Delivered or Delivery Failed');
+  }
+  const order = await RiderModel.updateDeliveryStatus(req.params.id, req.user.id, nextStatus);
+  sendResponse(res, 200, `Order marked as ${nextStatus}`, order);
+});
+
 export const updateMyLocation = asyncHandler(async (req, res) => {
   const latitude = normalizeCoordinate(req.body.latitude);
   const longitude = normalizeCoordinate(req.body.longitude);

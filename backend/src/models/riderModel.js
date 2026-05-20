@@ -1,5 +1,6 @@
 import { query } from "../config/db.js";
 import { calculateDistanceMeters } from "../utils/location.js";
+import { ORDER_STATUS } from "../constants/orderStatus.js";
 
 const VALID_REGIONS = ['Kathmandu', 'Bhaktapur', 'Lalitpur'];
 const normalizeRegion = (region) => VALID_REGIONS.includes(region) ? region : 'Kathmandu';
@@ -196,5 +197,44 @@ export const RiderModel = {
     );
     const rows = await query(`SELECT * FROM rider_profiles WHERE user_id = ? LIMIT 1`, [userId]);
     return rows[0] || null;
+  },
+
+  async updateDeliveryStatus(orderId, riderUserId, nextStatus) {
+    const allowedFinalStatuses = [ORDER_STATUS.DELIVERED, ORDER_STATUS.DELIVERY_FAILED];
+    if (!allowedFinalStatuses.includes(nextStatus)) {
+      const error = new Error('Rider can only mark dispatched orders as Delivered or Delivery Failed');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const rows = await query(
+      `SELECT * FROM orders WHERE id = ? AND assigned_rider_user_id = ? LIMIT 1`,
+      [orderId, riderUserId],
+    );
+    const order = rows[0];
+    if (!order) {
+      const error = new Error('Order not found for this rider');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (order.status !== ORDER_STATUS.OUT_FOR_DELIVERY) {
+      const error = new Error('Rider can update delivery result only after the order has been dispatched');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await query(`UPDATE orders SET status = ? WHERE id = ?`, [nextStatus, orderId]);
+    await query(
+      `INSERT INTO order_status_logs (order_id, status, changed_by_user_id, note)
+       VALUES (?, ?, ?, ?)`,
+      [orderId, nextStatus, riderUserId, nextStatus === ORDER_STATUS.DELIVERED ? 'Marked delivered by rider' : 'Marked delivery failed by rider'],
+    );
+    await this.releaseRider(riderUserId, {
+      lat: order.rider_current_latitude,
+      lng: order.rider_current_longitude,
+    });
+
+    return this.getOrderDetail(orderId, riderUserId);
   },
 };
