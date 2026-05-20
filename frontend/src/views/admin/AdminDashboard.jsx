@@ -4,7 +4,7 @@ import { Badge, Button } from "../../shared/ui";
 import { api } from "../../lib/api";
 import { toast } from "sonner";
 
-export function AdminDashboard() {
+export function AdminDashboard() {//
   const [restaurant, setRestaurant] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [activeCoupons, setActiveCoupons] = useState([]);

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Input, Button, Textarea, ImageWithFallback } from "../../shared/ui";
 import { api, fileUrl } from "../../lib/api";
 import { toast } from "sonner";
-import { toBase64 } from "../../lib/fileUpload";
+import { toBase64 } from "../../lib/fileUpload";//
 import { GoogleMapPicker } from "../../components/GoogleMapPicker";
 import { buildOpenStreetMapMarkerUrl } from "../../utils/location";
 

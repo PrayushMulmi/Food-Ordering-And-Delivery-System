@@ -5,7 +5,7 @@ import { clearSession } from '../../lib/auth';
 import { useState } from 'react';
 import imgLogo from '../../assets/43f7673940367781fb7ec14544ebbbad91e6ffee.png';
 import { ThemeToggle } from '../../shared/layout';
-
+//
 export function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
